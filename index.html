@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Katalog Film Populer</title>
+    <title>Katalog Film Populer dengan Player</title>
     <style>
         /* === Variabel Warna ala Netflix === */
         :root {
@@ -59,7 +59,6 @@
         /* === CSS Grid untuk Katalog Film === */
         .movie-grid {
             display: grid;
-            /* Auto-fill membuat grid responsif tanpa media query berlebihan */
             grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
             gap: 20px;
         }
@@ -97,7 +96,6 @@
             transition: opacity 0.3s ease;
         }
 
-        /* Menampilkan info saat card di-hover */
         .movie-card:hover .movie-info {
             opacity: 1;
         }
@@ -127,6 +125,56 @@
             grid-column: 1 / -1;
             padding: 40px;
         }
+
+        /* === MODAL POP-UP STYLES === */
+        .modal {
+            display: none; /* Tersembunyi secara default */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9); /* Latar belakang gelap transparan */
+            z-index: 100;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .modal-content {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            aspect-ratio: 16 / 9; /* Menjaga rasio layar lebar player */
+            background-color: #000;
+            border-radius: 8px;
+            box-shadow: 0 0 30px rgba(229, 9, 20, 0.4);
+        }
+
+        .close-btn {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: #fff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .close-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .modal-content iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -142,25 +190,33 @@
         </div>
     </main>
 
+    <div id="movie-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-btn" class="close-btn">&times; Tutup</span>
+            <div id="player-container" style="width: 100%; height: 100%;">
+                </div>
+        </div>
+    </div>
+
     <script>
         // === Konfigurasi API ===
-        // GANTI STRING DI BAWAH INI DENGAN API KEY TMDB MILIKMU
-        const API_KEY = '006ce472ff1d269dacb4ff625e4301ef'; 
+        // JANGAN LUPA GANTI DENGAN API KEY TMDB ANDA
+        const API_KEY = 'MASUKKAN_API_KEY_ANDA_DI_SINI'; 
         const BASE_URL = 'https://api.themoviedb.org/3';
-        // Endpoint untuk mengambil film populer, diterjemahkan ke bahasa Indonesia
         const API_URL = `${BASE_URL}/movie/popular?api_key=${API_KEY}&language=id-ID&page=1`;
         const IMG_PATH = 'https://image.tmdb.org/t/p/w500';
 
+        // Elemen DOM
         const mainGrid = document.getElementById('movie-grid');
+        const modal = document.getElementById('movie-modal');
+        const closeBtn = document.getElementById('close-btn');
+        const playerContainer = document.getElementById('player-container');
 
-        // Fungsi utama untuk mengambil data dari API
+        // Fungsi mengambil data film dari API
         async function getMovies(url) {
             try {
                 const res = await fetch(url);
-                
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
+                if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
                 
                 const data = await res.json();
                 showMovies(data.results);
@@ -174,9 +230,9 @@
             }
         }
 
-        // Fungsi untuk merender data ke dalam DOM
+        // Fungsi merender data film ke grid
         function showMovies(movies) {
-            mainGrid.innerHTML = ''; // Kosongkan grid
+            mainGrid.innerHTML = ''; 
 
             if (!movies || movies.length === 0) {
                 mainGrid.innerHTML = '<div class="message">Tidak ada film yang ditemukan.</div>';
@@ -184,17 +240,12 @@
             }
 
             movies.forEach(movie => {
-                // Destructuring properti yang dibutuhkan dari JSON respons
-                const { title, poster_path, vote_average } = movie;
-                
-                // Lewati film yang tidak memiliki poster
+                const { title, poster_path, vote_average, id } = movie;
                 if (!poster_path) return; 
 
-                // Buat elemen card
                 const movieEl = document.createElement('div');
                 movieEl.classList.add('movie-card');
 
-                // Isi HTML ke dalam card
                 movieEl.innerHTML = `
                     <img src="${IMG_PATH + poster_path}" alt="${title}" loading="lazy">
                     <div class="movie-info">
@@ -203,14 +254,63 @@
                     </div>
                 `;
                 
-                // Masukkan card ke dalam grid utama
+                // LOGIKA BARU: Tangkap ID TMDb saat kartu film diklik
+                movieEl.addEventListener('click', () => {
+                    openModal(id);
+                });
+
                 mainGrid.appendChild(movieEl);
             });
         }
 
-        // Jalankan fungsi saat halaman dimuat
+        // LOGIKA BARU: Fungsi untuk memunculkan modal dan memuat iframe
+        function openModal(movieId) {
+            // Memasukkan tag iframe secara dinamis dengan src ID film yang sesuai
+            playerContainer.innerHTML = `
+                <iframe 
+                    src="https://vidsrc.me/embed/movie?tmdb=${movieId}" 
+                    allowfullscreen 
+                    allow="autoplay; encrypted-media">
+                </iframe>
+            `;
+            
+            // Mengubah display modal menjadi flex untuk menampilkannya di tengah layar
+            modal.style.display = 'flex';
+            
+            // Mencegah halaman utama di latar belakang ikut ter-scroll saat modal aktif
+            document.body.style.overflow = 'hidden';
+        }
+
+        // LOGIKA BARU: Fungsi untuk menghilangkan modal dan menghentikan video
+        function closeModal() {
+            modal.style.display = 'none';
+            
+            // Mengosongkan container iframe secara total memastikan pemutaran video/suara berhenti
+            playerContainer.innerHTML = '';
+            
+            // Mengembalikan fungsi scroll halaman utama
+            document.body.style.overflow = 'auto';
+        }
+
+        // Event listener untuk tombol tutup
+        closeBtn.addEventListener('click', closeModal);
+
+        // Event listener jika pengguna mengklik area luar kotak player (di area gelap modal)
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // Menutup modal dengan tombol 'Escape' pada keyboard
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && modal.style.display === 'flex') {
+                closeModal();
+            }
+        });
+
+        // Jalankan aplikasi
         getMovies(API_URL);
     </script>
-
 </body>
 </html>
