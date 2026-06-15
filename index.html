@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Katalog Film Populer dengan Player</title>
+    <title>Katalog Film Populer dengan Pencarian & Player</title>
     <style>
         /* === Variabel Warna ala Netflix === */
         :root {
             --bg-color: #141414;
             --card-bg: #2f2f2f;
             --text-color: #e5e5e5;
-            --primary-color: #e50914; /* Merah Netflix */
-            --rating-color: #46d369; /* Hijau untuk rating */
+            --primary-color: #e50914; 
+            --rating-color: #46d369; 
         }
 
         /* === Reset & Base Styles === */
@@ -28,12 +28,13 @@
             overflow-x: hidden;
         }
 
-        /* === Header === */
+        /* === Header & Navigasi === */
         header {
             padding: 20px 4% 0;
             display: flex;
             align-items: center;
-            height: 70px;
+            justify-content: space-between; /* Membuat logo di kiri, search di kanan */
+            height: 80px;
             background: linear-gradient(to bottom, rgba(0,0,0,0.9) 10%, rgba(0,0,0,0));
         }
 
@@ -43,6 +44,34 @@
             text-transform: uppercase;
             letter-spacing: 1px;
             cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        header h1:hover {
+            transform: scale(1.05);
+        }
+
+        /* === Kolom Pencarian === */
+        .search-container input {
+            background-color: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #fff;
+            padding: 8px 15px;
+            border-radius: 4px;
+            font-size: 1rem;
+            outline: none;
+            width: 200px;
+            transition: width 0.4s ease, border-color 0.3s ease, background-color 0.3s ease;
+        }
+
+        .search-container input:focus {
+            width: 280px;
+            border-color: var(--primary-color);
+            background-color: rgba(0, 0, 0, 0.9);
+        }
+
+        .search-container input::placeholder {
+            color: #aaa;
         }
 
         /* === Main Container === */
@@ -128,13 +157,13 @@
 
         /* === MODAL POP-UP STYLES === */
         .modal {
-            display: none; /* Tersembunyi secara default */
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9); /* Latar belakang gelap transparan */
+            background-color: rgba(0, 0, 0, 0.9);
             z-index: 100;
             justify-content: center;
             align-items: center;
@@ -145,7 +174,7 @@
             position: relative;
             width: 100%;
             max-width: 900px;
-            aspect-ratio: 16 / 9; /* Menjaga rasio layar lebar player */
+            aspect-ratio: 16 / 9;
             background-color: #000;
             border-radius: 8px;
             box-shadow: 0 0 30px rgba(229, 9, 20, 0.4);
@@ -180,11 +209,14 @@
 <body>
 
     <header>
-        <h1>Notflix</h1>
+        <h1 id="logo">Notflix</h1>
+        <div class="search-container">
+            <input type="text" id="search-input" placeholder="Cari judul film...">
+        </div>
     </header>
 
     <main>
-        <h2>Sedang Tren Sekarang</h2>
+        <h2 id="section-title">Sedang Tren Sekarang</h2>
         <div id="movie-grid" class="movie-grid">
             <div class="message">Memuat data film...</div>
         </div>
@@ -193,8 +225,7 @@
     <div id="movie-modal" class="modal">
         <div class="modal-content">
             <span id="close-btn" class="close-btn">&times; Tutup</span>
-            <div id="player-container" style="width: 100%; height: 100%;">
-                </div>
+            <div id="player-container" style="width: 100%; height: 100%;"></div>
         </div>
     </div>
 
@@ -203,7 +234,12 @@
         // JANGAN LUPA GANTI DENGAN API KEY TMDB ANDA
         const API_KEY = '006ce472ff1d269dacb4ff625e4301ef'; 
         const BASE_URL = 'https://api.themoviedb.org/3';
+        
+        // Endpoint Populer
         const API_URL = `${BASE_URL}/movie/popular?api_key=${API_KEY}&language=id-ID&page=1`;
+        // Endpoint Pencarian (Dibutuhkan untuk query)
+        const SEARCH_API = `${BASE_URL}/search/movie?api_key=${API_KEY}&language=id-ID&query=`;
+        
         const IMG_PATH = 'https://image.tmdb.org/t/p/w500';
 
         // Elemen DOM
@@ -211,6 +247,9 @@
         const modal = document.getElementById('movie-modal');
         const closeBtn = document.getElementById('close-btn');
         const playerContainer = document.getElementById('player-container');
+        const searchInput = document.getElementById('search-input');
+        const sectionTitle = document.getElementById('section-title');
+        const logo = document.getElementById('logo');
 
         // Fungsi mengambil data film dari API
         async function getMovies(url) {
@@ -222,11 +261,7 @@
                 showMovies(data.results);
             } catch (error) {
                 console.error('Gagal mengambil data:', error);
-                mainGrid.innerHTML = `
-                    <div class="message">
-                        Gagal memuat film. Pastikan API Key valid dan koneksi internet lancar.<br>
-                        <small style="color: #666;">(Cek console log untuk detail error)</small>
-                    </div>`;
+                mainGrid.innerHTML = `<div class="message">Gagal memuat film. Pastikan API Key valid dan koneksi internet lancar.</div>`;
             }
         }
 
@@ -235,12 +270,13 @@
             mainGrid.innerHTML = ''; 
 
             if (!movies || movies.length === 0) {
-                mainGrid.innerHTML = '<div class="message">Tidak ada film yang ditemukan.</div>';
+                mainGrid.innerHTML = '<div class="message">Tidak ada film yang ditemukan untuk pencarian ini.</div>';
                 return;
             }
 
             movies.forEach(movie => {
                 const { title, poster_path, vote_average, id } = movie;
+                // Lewati film tanpa poster agar grid tetap rapi
                 if (!poster_path) return; 
 
                 const movieEl = document.createElement('div');
@@ -254,7 +290,7 @@
                     </div>
                 `;
                 
-                // LOGIKA BARU: Tangkap ID TMDb saat kartu film diklik
+                // Buka modal pemutar video saat diklik
                 movieEl.addEventListener('click', () => {
                     openModal(id);
                 });
@@ -263,9 +299,34 @@
             });
         }
 
-        // LOGIKA BARU: Fungsi untuk memunculkan modal dan memuat iframe
+        // === LOGIKA PENCARIAN BARU ===
+        searchInput.addEventListener('keypress', (e) => {
+            // Memeriksa jika tombol yang ditekan adalah 'Enter'
+            if (e.key === 'Enter') {
+                const searchTerm = searchInput.value.trim();
+
+                if (searchTerm) {
+                    // Panggil API pencarian dengan encodeURIComponent agar aman untuk URL (misal menangani spasi)
+                    getMovies(SEARCH_API + encodeURIComponent(searchTerm));
+                    // Ubah judul section
+                    sectionTitle.innerText = `Hasil Pencarian: "${searchTerm}"`;
+                } else {
+                    // Jika kolom dikosongkan dan di-Enter, kembalikan ke film populer
+                    getMovies(API_URL);
+                    sectionTitle.innerText = 'Sedang Tren Sekarang';
+                }
+            }
+        });
+
+        // Fitur tambahan: Klik logo untuk mereset tampilan ke daftar awal
+        logo.addEventListener('click', () => {
+            searchInput.value = '';
+            getMovies(API_URL);
+            sectionTitle.innerText = 'Sedang Tren Sekarang';
+        });
+
+        // === Fungsi Modal Pemutar ===
         function openModal(movieId) {
-            // Memasukkan tag iframe secara dinamis dengan src ID film yang sesuai
             playerContainer.innerHTML = `
                 <iframe 
                     src="https://vidsrc.me/embed/movie?tmdb=${movieId}" 
@@ -273,43 +334,25 @@
                     allow="autoplay; encrypted-media">
                 </iframe>
             `;
-            
-            // Mengubah display modal menjadi flex untuk menampilkannya di tengah layar
             modal.style.display = 'flex';
-            
-            // Mencegah halaman utama di latar belakang ikut ter-scroll saat modal aktif
             document.body.style.overflow = 'hidden';
         }
 
-        // LOGIKA BARU: Fungsi untuk menghilangkan modal dan menghentikan video
         function closeModal() {
             modal.style.display = 'none';
-            
-            // Mengosongkan container iframe secara total memastikan pemutaran video/suara berhenti
             playerContainer.innerHTML = '';
-            
-            // Mengembalikan fungsi scroll halaman utama
             document.body.style.overflow = 'auto';
         }
 
-        // Event listener untuk tombol tutup
         closeBtn.addEventListener('click', closeModal);
-
-        // Event listener jika pengguna mengklik area luar kotak player (di area gelap modal)
         modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                closeModal();
-            }
+            if (e.target === modal) closeModal();
         });
-
-        // Menutup modal dengan tombol 'Escape' pada keyboard
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && modal.style.display === 'flex') {
-                closeModal();
-            }
+            if (e.key === 'Escape' && modal.style.display === 'flex') closeModal();
         });
 
-        // Jalankan aplikasi
+        // Jalankan aplikasi pertama kali
         getMovies(API_URL);
     </script>
 </body>
