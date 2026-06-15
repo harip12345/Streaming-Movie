@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Katalog Film Populer</title>
+    <style>
+        /* === Variabel Warna ala Netflix === */
+        :root {
+            --bg-color: #141414;
+            --card-bg: #2f2f2f;
+            --text-color: #e5e5e5;
+            --primary-color: #e50914; /* Merah Netflix */
+            --rating-color: #46d369; /* Hijau untuk rating */
+        }
+
+        /* === Reset & Base Styles === */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        /* === Header === */
+        header {
+            padding: 20px 4% 0;
+            display: flex;
+            align-items: center;
+            height: 70px;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.9) 10%, rgba(0,0,0,0));
+        }
+
+        header h1 {
+            color: var(--primary-color);
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* === Main Container === */
+        main {
+            padding: 30px 4%;
+        }
+
+        main h2 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+
+        /* === CSS Grid untuk Katalog Film === */
+        .movie-grid {
+            display: grid;
+            /* Auto-fill membuat grid responsif tanpa media query berlebihan */
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        /* === Movie Card Styles === */
+        .movie-card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative;
+        }
+
+        .movie-card:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+            z-index: 2;
+        }
+
+        .movie-card img {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .movie-info {
+            padding: 15px;
+            background: linear-gradient(to top, #181818 0%, transparent 100%);
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        /* Menampilkan info saat card di-hover */
+        .movie-card:hover .movie-info {
+            opacity: 1;
+        }
+
+        .movie-info h3 {
+            margin: 0;
+            font-size: 1rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .rating {
+            color: var(--rating-color);
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-weight: bold;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        /* === Pesan Error/Loading === */
+        .message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #999;
+            grid-column: 1 / -1;
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Notflix</h1>
+    </header>
+
+    <main>
+        <h2>Sedang Tren Sekarang</h2>
+        <div id="movie-grid" class="movie-grid">
+            <div class="message">Memuat data film...</div>
+        </div>
+    </main>
+
+    <script>
+        // === Konfigurasi API ===
+        // GANTI STRING DI BAWAH INI DENGAN API KEY TMDB MILIKMU
+        const API_KEY = 'MASUKKAN_API_KEY_ANDA_DI_SINI'; 
+        const BASE_URL = 'https://api.themoviedb.org/3';
+        // Endpoint untuk mengambil film populer, diterjemahkan ke bahasa Indonesia
+        const API_URL = `${BASE_URL}/movie/popular?api_key=${API_KEY}&language=id-ID&page=1`;
+        const IMG_PATH = 'https://image.tmdb.org/t/p/w500';
+
+        const mainGrid = document.getElementById('movie-grid');
+
+        // Fungsi utama untuk mengambil data dari API
+        async function getMovies(url) {
+            try {
+                const res = await fetch(url);
+                
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                
+                const data = await res.json();
+                showMovies(data.results);
+            } catch (error) {
+                console.error('Gagal mengambil data:', error);
+                mainGrid.innerHTML = `
+                    <div class="message">
+                        Gagal memuat film. Pastikan API Key valid dan koneksi internet lancar.<br>
+                        <small style="color: #666;">(Cek console log untuk detail error)</small>
+                    </div>`;
+            }
+        }
+
+        // Fungsi untuk merender data ke dalam DOM
+        function showMovies(movies) {
+            mainGrid.innerHTML = ''; // Kosongkan grid
+
+            if (!movies || movies.length === 0) {
+                mainGrid.innerHTML = '<div class="message">Tidak ada film yang ditemukan.</div>';
+                return;
+            }
+
+            movies.forEach(movie => {
+                // Destructuring properti yang dibutuhkan dari JSON respons
+                const { title, poster_path, vote_average } = movie;
+                
+                // Lewati film yang tidak memiliki poster
+                if (!poster_path) return; 
+
+                // Buat elemen card
+                const movieEl = document.createElement('div');
+                movieEl.classList.add('movie-card');
+
+                // Isi HTML ke dalam card
+                movieEl.innerHTML = `
+                    <img src="${IMG_PATH + poster_path}" alt="${title}" loading="lazy">
+                    <div class="movie-info">
+                        <h3>${title}</h3>
+                        <div class="rating">${vote_average.toFixed(1)} Rating</div>
+                    </div>
+                `;
+                
+                // Masukkan card ke dalam grid utama
+                mainGrid.appendChild(movieEl);
+            });
+        }
+
+        // Jalankan fungsi saat halaman dimuat
+        getMovies(API_URL);
+    </script>
+
+</body>
+</html>
