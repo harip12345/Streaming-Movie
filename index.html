@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Katalog Film Populer dengan Watchlist & Player</title>
+    <title>Katalog Film Populer dengan Genre, Watchlist & Player</title>
     <style>
         /* === Variabel Warna ala Netflix === */
         :root {
@@ -28,7 +28,7 @@
             overflow-x: hidden;
         }
 
-        /* === Header & Navigasi === */
+        /* === Header & Navigasi Utama === */
         header {
             padding: 20px 4% 0;
             display: flex;
@@ -57,7 +57,6 @@
             gap: 20px;
         }
 
-        /* Tombol Daftar Tontonan */
         .watchlist-nav-btn {
             background: none;
             border: none;
@@ -91,13 +90,42 @@
             background-color: rgba(0, 0, 0, 0.9);
         }
 
-        .search-container input::placeholder {
-            color: #aaa;
+        /* === Navigasi Genre === */
+        .genre-nav {
+            padding: 10px 4%;
+            display: flex;
+            gap: 15px;
+            overflow-x: auto;
+            /* Menyembunyikan scrollbar agar terlihat rapi */
+            -ms-overflow-style: none;  
+            scrollbar-width: none;  
+        }
+
+        .genre-nav::-webkit-scrollbar { 
+            display: none; 
+        }
+
+        .genre-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.3s ease;
+        }
+
+        .genre-btn:hover, .genre-btn.active {
+            background: var(--primary-color);
+            border-color: var(--primary-color);
+            transform: scale(1.05);
         }
 
         /* === Main Container === */
         main {
-            padding: 30px 4%;
+            padding: 20px 4% 40px;
         }
 
         main h2 {
@@ -178,7 +206,7 @@
             width: 36px;
             height: 36px;
             cursor: pointer;
-            z-index: 3; /* Berada di atas info dan gambar */
+            z-index: 3; 
             display: flex;
             justify-content: center;
             align-items: center;
@@ -193,13 +221,12 @@
         .heart-icon {
             width: 20px;
             height: 20px;
-            fill: transparent; /* Kosong secara default */
-            stroke: #fff;      /* Garis putih */
+            fill: transparent; 
+            stroke: #fff;      
             stroke-width: 2px;
             transition: fill 0.3s, stroke 0.3s;
         }
 
-        /* Saat film sudah masuk watchlist */
         .bookmark-btn.saved .heart-icon {
             fill: var(--primary-color);
             stroke: var(--primary-color);
@@ -222,7 +249,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.9);
+            background-color: rgba(0, 0, 0, 0.95);
             z-index: 100;
             justify-content: center;
             align-items: center;
@@ -233,7 +260,6 @@
             position: relative;
             width: 100%;
             max-width: 1000px;
-            /* Rasio aspek responsif 16:9 secara native CSS */
             aspect-ratio: 16 / 9;
             background-color: #000;
             border-radius: 8px;
@@ -278,6 +304,17 @@
         </div>
     </header>
 
+    <nav class="genre-nav" id="genre-nav">
+        <button class="genre-btn active" data-id="trend">🔥 Sedang Tren</button>
+        <button class="genre-btn" data-id="28">Action</button>
+        <button class="genre-btn" data-id="35">Comedy</button>
+        <button class="genre-btn" data-id="27">Horror</button>
+        <button class="genre-btn" data-id="878">Sci-Fi</button>
+        <button class="genre-btn" data-id="10749">Romance</button>
+        <button class="genre-btn" data-id="16">Animation</button>
+        <button class="genre-btn" data-id="18">Drama</button>
+    </nav>
+
     <main>
         <h2 id="section-title">Sedang Tren Sekarang</h2>
         <div id="movie-grid" class="movie-grid">
@@ -296,8 +333,11 @@
         // === Konfigurasi API ===
         const API_KEY = '006ce472ff1d269dacb4ff625e4301ef'; // GANTI DENGAN API KEY ANDA
         const BASE_URL = 'https://api.themoviedb.org/3';
+        
+        // Endpoints
         const API_URL = `${BASE_URL}/movie/popular?api_key=${API_KEY}&language=id-ID&page=1`;
         const SEARCH_API = `${BASE_URL}/search/movie?api_key=${API_KEY}&language=id-ID&query=`;
+        const DISCOVER_API = `${BASE_URL}/discover/movie?api_key=${API_KEY}&language=id-ID&with_genres=`;
         const IMG_PATH = 'https://image.tmdb.org/t/p/w500';
 
         // Elemen DOM
@@ -309,14 +349,10 @@
         const sectionTitle = document.getElementById('section-title');
         const logo = document.getElementById('logo');
         const navWatchlist = document.getElementById('nav-watchlist');
+        const genreButtons = document.querySelectorAll('.genre-btn');
 
-        // === FUNGSI LOCALSTORAGE UNTUK WATCHLIST ===
-        // Mengambil daftar watchlist dari LocalStorage
-        function getWatchlist() {
-            return JSON.parse(localStorage.getItem('notflix_watchlist')) || [];
-        }
-
-        // Menyimpan data film ke LocalStorage
+        // === FUNGSI LOCALSTORAGE ===
+        function getWatchlist() { return JSON.parse(localStorage.getItem('notflix_watchlist')) || []; }
         function saveToWatchlist(movie) {
             const watchlist = getWatchlist();
             if (!watchlist.some(m => m.id === movie.id)) {
@@ -324,25 +360,17 @@
                 localStorage.setItem('notflix_watchlist', JSON.stringify(watchlist));
             }
         }
-
-        // Menghapus data film dari LocalStorage
         function removeFromWatchlist(id) {
-            let watchlist = getWatchlist();
-            watchlist = watchlist.filter(m => m.id !== id);
+            let watchlist = getWatchlist().filter(m => m.id !== id);
             localStorage.setItem('notflix_watchlist', JSON.stringify(watchlist));
         }
+        function isBookmarked(id) { return getWatchlist().some(m => m.id === id); }
 
-        // Memeriksa apakah film sudah ada di watchlist
-        function isBookmarked(id) {
-            return getWatchlist().some(m => m.id === id);
-        }
-
-        // === FUNGSI MENGAMBIL & MENAMPILKAN DATA ===
+        // === MENGAMBIL & MENAMPILKAN DATA ===
         async function getMovies(url) {
             try {
                 const res = await fetch(url);
                 if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-                
                 const data = await res.json();
                 showMovies(data.results);
             } catch (error) {
@@ -351,10 +379,8 @@
             }
         }
 
-        // Fungsi ini bisa digunakan untuk hasil API maupun data dari LocalStorage
         function showMovies(movies) {
             mainGrid.innerHTML = ''; 
-
             if (!movies || movies.length === 0) {
                 mainGrid.innerHTML = '<div class="message">Tidak ada film yang ditemukan.</div>';
                 return;
@@ -366,11 +392,8 @@
 
                 const movieEl = document.createElement('div');
                 movieEl.classList.add('movie-card');
-
-                // Cek status apakah film ini ada di watchlist
                 const savedClass = isBookmarked(id) ? 'saved' : '';
 
-                // Memasukkan gambar, info, dan tombol bookmark
                 movieEl.innerHTML = `
                     <button class="bookmark-btn ${savedClass}" title="Tambahkan ke Daftar Tontonan">
                         <svg class="heart-icon" viewBox="0 0 24 24">
@@ -384,70 +407,85 @@
                     </div>
                 `;
                 
-                // Event listener untuk tombol hati (Bookmark)
                 const bookmarkBtn = movieEl.querySelector('.bookmark-btn');
                 bookmarkBtn.addEventListener('click', (e) => {
-                    // Mencegah klik menyebar ke movieEl (agar modal video tidak terbuka)
                     e.stopPropagation(); 
-                    
                     if (isBookmarked(id)) {
                         removeFromWatchlist(id);
                         bookmarkBtn.classList.remove('saved');
                     } else {
-                        // Simpan struktur objek yang sama persis agar showMovies() bisa membaca ulang nanti
                         saveToWatchlist({ id, title, poster_path, vote_average });
                         bookmarkBtn.classList.add('saved');
                     }
                 });
 
-                // Buka modal pemutar video saat bagian luar kartu diklik
-                movieEl.addEventListener('click', () => {
-                    openModal(id);
-                });
-
+                movieEl.addEventListener('click', () => openModal(id));
                 mainGrid.appendChild(movieEl);
             });
         }
 
-        // === EVENT LISTENER NAVIGASI & PENCARIAN ===
-        
-        // Membuka halaman Daftar Tontonan
-        navWatchlist.addEventListener('click', () => {
-            const watchlist = getWatchlist();
-            sectionTitle.innerText = 'Daftar Tontonan Saya';
-            searchInput.value = ''; // Bersihkan input pencarian
-            showMovies(watchlist);
+        // === EVENT LISTENER FILTER GENRE ===
+        genreButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Reset semua kelas aktif
+                genreButtons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active'); // Tambah kelas aktif pada tombol yang diklik
+                
+                searchInput.value = ''; // Bersihkan pencarian
+
+                const genreId = btn.getAttribute('data-id');
+                const genreName = btn.innerText.replace('🔥 ', ''); // Hapus emoji untuk judul
+
+                if (genreId === 'trend') {
+                    getMovies(API_URL);
+                    sectionTitle.innerText = 'Sedang Tren Sekarang';
+                } else {
+                    getMovies(DISCOVER_API + genreId);
+                    sectionTitle.innerText = `Film ${genreName}`;
+                }
+            });
         });
 
-        // Pencarian film via Enter
+        // === EVENT LISTENER NAVIGASI LAINNYA ===
+        navWatchlist.addEventListener('click', () => {
+            genreButtons.forEach(b => b.classList.remove('active')); // Reset active tab
+            sectionTitle.innerText = 'Daftar Tontonan Saya';
+            searchInput.value = ''; 
+            showMovies(getWatchlist());
+        });
+
         searchInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 const searchTerm = searchInput.value.trim();
+                genreButtons.forEach(b => b.classList.remove('active')); // Reset active tab
+
                 if (searchTerm) {
                     getMovies(SEARCH_API + encodeURIComponent(searchTerm));
                     sectionTitle.innerText = `Hasil Pencarian: "${searchTerm}"`;
                 } else {
-                    getMovies(API_URL);
-                    sectionTitle.innerText = 'Sedang Tren Sekarang';
+                    document.querySelector('[data-id="trend"]').click(); // Kembali ke Tren
                 }
             }
         });
 
-        // Klik logo untuk mereset ke tren
         logo.addEventListener('click', () => {
-            searchInput.value = '';
-            getMovies(API_URL);
-            sectionTitle.innerText = 'Sedang Tren Sekarang';
+            document.querySelector('[data-id="trend"]').click(); // Kembali ke Tren
         });
 
-        // === FUNGSI MODAL PEMUTAR VIDEO ===
+        // === FUNGSI MODAL PEMUTAR VIDEO YANG DIPERBAIKI ===
         function openModal(movieId) {
-            // Ditambahkan allow="autoplay; fullscreen" dan allowfullscreen pada iframe
+            /* PERBAIKAN FULLSCREEN: 
+               Menambahkan atribut webkitallowfullscreen, mozallowfullscreen, 
+               serta melengkapi parameter di dalam atribut allow.
+            */
             playerContainer.innerHTML = `
                 <iframe 
                     src="https://vidsrc.me/embed/movie?tmdb=${movieId}" 
-                    allow="autoplay; fullscreen" 
-                    allowfullscreen>
+                    frameborder="0"
+                    allow="autoplay; fullscreen; encrypted-media; picture-in-picture" 
+                    allowfullscreen="true"
+                    webkitallowfullscreen="true" 
+                    mozallowfullscreen="true">
                 </iframe>
             `;
             modal.style.display = 'flex';
@@ -456,7 +494,7 @@
 
         function closeModal() {
             modal.style.display = 'none';
-            playerContainer.innerHTML = ''; // Hentikan video
+            playerContainer.innerHTML = ''; 
             document.body.style.overflow = 'auto';
         }
 
@@ -468,7 +506,7 @@
             if (e.key === 'Escape' && modal.style.display === 'flex') closeModal();
         });
 
-        // Menjalankan aplikasi untuk pertama kali
+        // Mulai aplikasi
         getMovies(API_URL);
     </script>
 </body>
