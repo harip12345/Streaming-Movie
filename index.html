@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Netlfiix</title>
+<title>Netflix</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='4'%20fill='%23000'/%3E%3Cpolygon%20points='6,3%209,3%2018,21%2015,21'%20fill='%23e50914'/%3E%3Crect%20x='6'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3Crect%20x='15'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3C/svg%3E">
 <style>
   :root{--bg:#141414;--text:#fff;--text-dim:#b3b3b3;--primary:#e50914;--rating:#46d369;--card-radius:4px;--row-gap:.4vw}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -187,7 +188,7 @@
 
 <header id="header">
   <div class="header-left">
-    <span class="logo" id="logo">Netlfiix</span>
+    <span class="logo" id="logo">Netflix</span>
     <nav class="main-nav" id="main-nav"></nav>
   </div>
   <div class="nav-right">
@@ -287,7 +288,7 @@
 
   // ===== SUBTITLE / PLAYER SRC =====
   const SUB_LANGS = {id:'Indonesia',en:'English',ko:'Korea',ja:'Jepang',th:'Thailand',es:'Spanyol',fr:'Prancis',ar:'Arab',off:'Mati'};
-  let subLang = localStorage.getItem('Netlfiix_sublang') || 'id';
+  let subLang = localStorage.getItem('Netflix_sublang') || 'id';
   const psrc = (media,id) => {
     const type = media==='tv' ? 'tv' : 'movie';
     let u = 'https://vidsrc.me/embed/'+type+'?tmdb='+id;
@@ -322,13 +323,13 @@
   const currentMedias = () => state.media==='all' ? ['movie','tv'] : [state.media];
 
   // ===== WATCHLIST =====
-  const getWatchlist = () => JSON.parse(localStorage.getItem('Netlfiix_watchlist')) || [];
+  const getWatchlist = () => JSON.parse(localStorage.getItem('Netflix_watchlist')) || [];
   const isSaved = (id,media) => getWatchlist().some(m => m.id===id && m.media===media);
   function toggleSave(it){
     let wl = getWatchlist();
     if(isSaved(it.id,it.media)) wl = wl.filter(m => !(m.id===it.id && m.media===it.media));
     else wl.push(it);
-    localStorage.setItem('Netlfiix_watchlist', JSON.stringify(wl));
+    localStorage.setItem('Netflix_watchlist', JSON.stringify(wl));
   }
 
   // ===== AMBIL ITEM UNTUK SATU BARIS =====
@@ -630,7 +631,7 @@
     showUI();
     const pc=document.getElementById('player-close'); if(pc) pc.onclick=closeModal;
     subSel.innerHTML=Object.entries(SUB_LANGS).map(([k,v])=>`<option value="${k}"${k===subLang?' selected':''}>${v}</option>`).join('');
-    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('Netlfiix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
+    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('Netflix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
     document.getElementById('fs-btn').onclick=()=>{
       const inFs=document.fullscreenElement||document.webkitFullscreenElement;
       if(!inFs){ const req=wrap.requestFullscreen||wrap.webkitRequestFullscreen||wrap.msRequestFullscreen; if(req)req.call(wrap); }
