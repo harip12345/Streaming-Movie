@@ -333,7 +333,31 @@
           </div>
           <div class="card-meta"><span class="match">${match}% cocok</span>${year?`<span>${year}</span>`:''}</div>
         </div>
-      </div>`;<br>  }<br><br>  function bindCard(el,it){<br>    movieCache[it.media+'-'+it.id]=it;<br>    el.querySelector('img').onclick=()=>openDetail(it.media,it.id);<br>    el.querySelector('.play').onclick=e=>{e.stopPropagation();openPlayer(it.media,it.id);};<br>    el.querySelector('.info').onclick=e=>{e.stopPropagation();openDetail(it.media,it.id);};<br>    const sb=el.querySelector('.save');<br>    sb.onclick=e=>{e.stopPropagation();toggleSave(it);sb.classList.toggle('saved');};<br>  }<br><br>  // ===== HERO / BILLBOARD =====<br>  async function renderHero(it){<br>    if(!it){hero.style.display='none';return;}<br>    hero.style.display='flex';<br>    const bg = it.backdrop_path ? BACKDROP+it.backdrop_path : (it.poster_path ? IMG+it.poster_path : '');<br>    hero.style.backgroundImage = `url('${bg}')`;<br>    const year = (it.date||'').slice(0,4);<br>    const match = Math.round((it.vote_average||0)*10);<br>    let overview = it.overview;<br>    if(!overview){ try{ const en = await fetchJSON(detailEnURL(it.media,it.id)); overview = en.overview; }catch(e){} }<br>    if(!overview) overview = 'Deskripsi belum tersedia untuk judul ini.';<br>    const typeLabel = it.media==='tv' ? 'SERIES' : 'FILM';<br>    hero.innerHTML = `
+      </div>`;
+  }
+
+  function bindCard(el,it){
+    movieCache[it.media+'-'+it.id]=it;
+    el.querySelector('img').onclick=()=>openDetail(it.media,it.id);
+    el.querySelector('.play').onclick=e=>{e.stopPropagation();openPlayer(it.media,it.id);};
+    el.querySelector('.info').onclick=e=>{e.stopPropagation();openDetail(it.media,it.id);};
+    const sb=el.querySelector('.save');
+    sb.onclick=e=>{e.stopPropagation();toggleSave(it);sb.classList.toggle('saved');};
+  }
+
+  // ===== HERO / BILLBOARD =====
+  async function renderHero(it){
+    if(!it){hero.style.display='none';return;}
+    hero.style.display='flex';
+    const bg = it.backdrop_path ? BACKDROP+it.backdrop_path : (it.poster_path ? IMG+it.poster_path : '');
+    hero.style.backgroundImage = `url('${bg}')`;
+    const year = (it.date||'').slice(0,4);
+    const match = Math.round((it.vote_average||0)*10);
+    let overview = it.overview;
+    if(!overview){ try{ const en = await fetchJSON(detailEnURL(it.media,it.id)); overview = en.overview; }catch(e){} }
+    if(!overview) overview = 'Deskripsi belum tersedia untuk judul ini.';
+    const typeLabel = it.media==='tv' ? 'SERIES' : 'FILM';
+    hero.innerHTML = `
       <div class="hero-content">
         <div class="hero-tag">${typeLabel}</div>
         <h1 class="hero-title">${it.title||''}</h1>
@@ -347,7 +371,18 @@
           <button class="btn btn-play"><svg viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg> Putar</button>
           <button class="btn btn-info"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg> Info Selengkapnya</button>
         </div>
-      </div>`;<br>    hero.querySelector('.btn-play').onclick=()=>openPlayer(it.media,it.id);<br>    hero.querySelector('.btn-info').onclick=()=>openDetail(it.media,it.id);<br>  }<br><br>  // ===== BARIS (carousel) =====<br>  function buildRow(def,items){<br>    const valid = items.filter(m=>m.poster_path);<br>    if(!valid.length) return null;<br>    const row = document.createElement('section');<br>    row.className='row';<br>    row.innerHTML = `
+      </div>`;
+    hero.querySelector('.btn-play').onclick=()=>openPlayer(it.media,it.id);
+    hero.querySelector('.btn-info').onclick=()=>openDetail(it.media,it.id);
+  }
+
+  // ===== BARIS (carousel) =====
+  function buildRow(def,items){
+    const valid = items.filter(m=>m.poster_path);
+    if(!valid.length) return null;
+    const row = document.createElement('section');
+    row.className='row';
+    row.innerHTML = `
       <div class="row-head">
         <h2 class="row-title">${def.label}</h2>
         <button class="more-btn-inline">Lihat Semua <span>›</span></button>
@@ -356,11 +391,158 @@
         <button class="slider-arrow left">‹</button>
         <div class="row-slider"></div>
         <button class="slider-arrow right">›</button>
-      </div>`;<br>    const slider = row.querySelector('.row-slider');<br>    const list = def.top10 ? valid.slice(0,10) : valid;<br>    list.forEach((it,i)=>{<br>      if(def.top10){<br>        const wrap=document.createElement('div');<br>        wrap.className='top-card';<br>        wrap.innerHTML=`<span class="top-rank">${i+1}</span>`+cardHTML(it);<br>        bindCard(wrap.querySelector('.card'),it);<br>        slider.appendChild(wrap);<br>      } else {<br>        const tmp=document.createElement('div');<br>        tmp.innerHTML=cardHTML(it);<br>        const card=tmp.firstElementChild;<br>        bindCard(card,it);<br>        slider.appendChild(card);<br>      }<br>    });<br>    row.querySelector('.left').onclick=()=>slider.scrollBy({left:-slider.clientWidth*0.85,behavior:'smooth'});<br>    row.querySelector('.right').onclick=()=>slider.scrollBy({left:slider.clientWidth*0.85,behavior:'smooth'});<br>    row.querySelector('.more-btn-inline').onclick=()=>openCategory(def);<br>    return row;<br>  }<br><br>  // ===== GRID =====<br>  function buildGridEl(items){<br>    const grid=document.createElement('div');<br>    grid.className='grid';<br>    const valid=dedupe(items).filter(m=>m.poster_path);<br>    valid.forEach(it=>{<br>      const tmp=document.createElement('div');<br>      tmp.innerHTML=cardHTML(it);<br>      const card=tmp.firstElementChild;<br>      bindCard(card,it);<br>      grid.appendChild(card);<br>    });<br>    return {grid,count:valid.length};<br>  }<br><br>  // ===== BERANDA =====<br>  async function loadHome(){<br>    state.tab='home'; setActiveNav();<br>    hero.style.display='flex';<br>    rowsWrap.classList.remove('pushed');<br>    rowsWrap.innerHTML='<div class="spinner"></div>';<br>    try{<br>      const defs=[<br>        {label:'🔥 Sedang Tren',trending:true},<br>        {label:'🏆 Top 10 Hari Ini',trending:true,top10:true},<br>        {label:'⭐ Populer Saat Ini'},<br>        ...GENRES.map(g=>({label:g.label,genre:g})),<br>      ];<br>      const lists=await Promise.all(defs.map(d=>fetchRowItems(d)));<br>      const heroPool=(lists[0]||[]).filter(m=>m.backdrop_path);<br>      renderHero(heroPool[Math.floor(Math.random()*Math.min(6,heroPool.length||1))]||heroPool[0]);<br>      rowsWrap.innerHTML='';<br>      defs.forEach((d,i)=>{const r=buildRow(d,lists[i]);if(r)rowsWrap.appendChild(r);});<br>      if(!rowsWrap.children.length) rowsWrap.innerHTML='<div class="message">Tidak ada judul untuk filter ini. Coba ubah filter Tipe atau Wilayah.</div>';<br>    }catch(e){<br>      console.error(e);<br>      rowsWrap.innerHTML='<div class="message">Gagal memuat. Pastikan API Key TMDB valid dan koneksi internet lancar.</div>';<br>    }<br>  }<br><br>  // ===== KATEGORI (Lihat Semua / klik genre) =====<br>  async function openCategory(def){<br>    state.tab='category'; state.catDef=def; state.catPage=1; state.catItems=[];<br>    setActiveNav();<br>    hero.style.display='none';<br>    rowsWrap.classList.add('pushed');<br>    rowsWrap.innerHTML=`
+      </div>`;
+    const slider = row.querySelector('.row-slider');
+    const list = def.top10 ? valid.slice(0,10) : valid;
+    list.forEach((it,i)=>{
+      if(def.top10){
+        const wrap=document.createElement('div');
+        wrap.className='top-card';
+        wrap.innerHTML=`<span class="top-rank">${i+1}</span>`+cardHTML(it);
+        bindCard(wrap.querySelector('.card'),it);
+        slider.appendChild(wrap);
+      } else {
+        const tmp=document.createElement('div');
+        tmp.innerHTML=cardHTML(it);
+        const card=tmp.firstElementChild;
+        bindCard(card,it);
+        slider.appendChild(card);
+      }
+    });
+    row.querySelector('.left').onclick=()=>slider.scrollBy({left:-slider.clientWidth*0.85,behavior:'smooth'});
+    row.querySelector('.right').onclick=()=>slider.scrollBy({left:slider.clientWidth*0.85,behavior:'smooth'});
+    row.querySelector('.more-btn-inline').onclick=()=>openCategory(def);
+    return row;
+  }
+
+  // ===== GRID =====
+  function buildGridEl(items){
+    const grid=document.createElement('div');
+    grid.className='grid';
+    const valid=dedupe(items).filter(m=>m.poster_path);
+    valid.forEach(it=>{
+      const tmp=document.createElement('div');
+      tmp.innerHTML=cardHTML(it);
+      const card=tmp.firstElementChild;
+      bindCard(card,it);
+      grid.appendChild(card);
+    });
+    return {grid,count:valid.length};
+  }
+
+  // ===== BERANDA =====
+  async function loadHome(){
+    state.tab='home'; setActiveNav();
+    hero.style.display='flex';
+    rowsWrap.classList.remove('pushed');
+    rowsWrap.innerHTML='<div class="spinner"></div>';
+    try{
+      const defs=[
+        {label:'🔥 Sedang Tren',trending:true},
+        {label:'🏆 Top 10 Hari Ini',trending:true,top10:true},
+        {label:'⭐ Populer Saat Ini'},
+        ...GENRES.map(g=>({label:g.label,genre:g})),
+      ];
+      const lists=await Promise.all(defs.map(d=>fetchRowItems(d)));
+      const heroPool=(lists[0]||[]).filter(m=>m.backdrop_path);
+      renderHero(heroPool[Math.floor(Math.random()*Math.min(6,heroPool.length||1))]||heroPool[0]);
+      rowsWrap.innerHTML='';
+      defs.forEach((d,i)=>{const r=buildRow(d,lists[i]);if(r)rowsWrap.appendChild(r);});
+      if(!rowsWrap.children.length) rowsWrap.innerHTML='<div class="message">Tidak ada judul untuk filter ini. Coba ubah filter Tipe atau Wilayah.</div>';
+    }catch(e){
+      console.error(e);
+      rowsWrap.innerHTML='<div class="message">Gagal memuat. Pastikan API Key TMDB valid dan koneksi internet lancar.</div>';
+    }
+  }
+
+  // ===== KATEGORI (Lihat Semua / klik genre) =====
+  async function openCategory(def){
+    state.tab='category'; state.catDef=def; state.catPage=1; state.catItems=[];
+    setActiveNav();
+    hero.style.display='none';
+    rowsWrap.classList.add('pushed');
+    rowsWrap.innerHTML=`
       <div class="cat-head"><h2 class="cat-title">${def.label}</h2></div>
       <div class="grid" id="cat-grid"></div>
       <div class="spinner" id="cat-spin"></div>
-      <div class="more-wrap"><button class="more-btn" id="load-more">Muat Lebih Banyak</button></div>`;<br>    document.getElementById('load-more').onclick=()=>loadMoreCategory();<br>    window.scrollTo({top:0,behavior:'smooth'});<br>    await loadMoreCategory();<br>  }<br>  async function loadMoreCategory(){<br>    const def=state.catDef; const region=REGIONS[state.region];<br>    const spin=document.getElementById('cat-spin'); if(spin)spin.style.display='block';<br>    const medias=currentMedias();<br>    const datas=await Promise.all(medias.map(media=><br>      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage})).catch(()=>({results:[]}))<br>    ));<br>    datas.forEach((d,i)=>{(d.results||[]).forEach(r=>state.catItems.push(normalize(r,medias[i])));});<br>    state.catPage++;<br>    state.catItems=dedupe(state.catItems).filter(passFilters);<br>    const grid=document.getElementById('cat-grid');<br>    if(grid){<br>      grid.innerHTML='';<br>      state.catItems.filter(m=>m.poster_path).forEach(it=>{<br>        const tmp=document.createElement('div');<br>        tmp.innerHTML=cardHTML(it);<br>        const card=tmp.firstElementChild;<br>        bindCard(card,it);<br>        grid.appendChild(card);<br>      });<br>    }<br>    if(spin)spin.style.display='none';<br>  }<br><br>  // ===== PENCARIAN =====<br>  async function doSearch(q){<br>    state.tab='search'; state.query=q; setActiveNav();<br>    hero.style.display='none'; rowsWrap.classList.add('pushed');<br>    rowsWrap.innerHTML='<div class="spinner"></div>';<br>    try{<br>      const data=await fetchJSON(searchURL(q));<br>      let items=(data.results||[]).filter(r=>r.media_type==='movie'||r.media_type==='tv').map(r=>normalize(r));<br>      if(state.media!=='all') items=items.filter(it=>it.media===state.media);<br>      items=items.filter(passFilters);<br>      rowsWrap.innerHTML=`<div class="cat-head"><h2 class="cat-title">Hasil untuk: "${q}"</h2></div>`;<br>      const {grid,count}=buildGridEl(items);<br>      if(!count) rowsWrap.innerHTML+='<div class="message">Tidak ada hasil.</div>';<br>      else rowsWrap.appendChild(grid);<br>    }catch(e){<br>      rowsWrap.innerHTML='<div class="message">Pencarian gagal.</div>';<br>    }<br>  }<br><br>  // ===== DAFTAR SAYA =====<br>  function showWatchlist(){<br>    state.tab='watchlist'; setActiveNav();<br>    hero.style.display='none'; rowsWrap.classList.add('pushed');<br>    let items=getWatchlist();<br>    if(state.media!=='all') items=items.filter(it=>it.media===state.media);<br>    rowsWrap.innerHTML=`<div class="cat-head"><h2 class="cat-title">Daftar Saya</h2></div>`;<br>    const {grid,count}=buildGridEl(items);<br>    if(!count) rowsWrap.innerHTML+='<div class="message">Daftar Saya masih kosong. Tambahkan film atau series dengan tombol +.</div>';<br>    else rowsWrap.appendChild(grid);<br>  }<br><br>  // ===== MODAL DETAIL =====<br>  async function openDetail(media,id){<br>    let full=null;<br>    try{ full=await fetchJSON(detailURL(media,id)); }catch(e){}<br>    let it = full ? normalize(full,media) : movieCache[media+'-'+id];<br>    if(!it) return;<br>    let overview=it.overview;<br>    if(!overview){ try{ const en=await fetchJSON(detailEnURL(media,id)); overview=en.overview; }catch(e){} }<br>    full = full || {};<br>    const bg = it.backdrop_path ? BACKDROP+it.backdrop_path : IMG+it.poster_path;<br>    const year=(it.date||'').slice(0,4);<br>    const match=Math.round((it.vote_average||0)*10);<br>    let extra='';<br>    if(media==='movie' && full.runtime) extra=`${Math.floor(full.runtime/60)}j ${full.runtime%60}m`;<br>    if(media==='tv' && full.number_of_seasons) extra=`${full.number_of_seasons} Musim`;<br>    const genreNames=(full.genres||[]).map(g=>g.name).join(' • ');<br>    const typeLabel = media==='tv' ? 'Series' : 'Film';<br>    modalInner.innerHTML=`
+      <div class="more-wrap"><button class="more-btn" id="load-more">Muat Lebih Banyak</button></div>`;
+    document.getElementById('load-more').onclick=()=>loadMoreCategory();
+    window.scrollTo({top:0,behavior:'smooth'});
+    await loadMoreCategory();
+  }
+  async function loadMoreCategory(){
+    const def=state.catDef; const region=REGIONS[state.region];
+    const spin=document.getElementById('cat-spin'); if(spin)spin.style.display='block';
+    const medias=currentMedias();
+    const datas=await Promise.all(medias.map(media=>
+      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage})).catch(()=>({results:[]}))
+    ));
+    datas.forEach((d,i)=>{(d.results||[]).forEach(r=>state.catItems.push(normalize(r,medias[i])));});
+    state.catPage++;
+    state.catItems=dedupe(state.catItems).filter(passFilters);
+    const grid=document.getElementById('cat-grid');
+    if(grid){
+      grid.innerHTML='';
+      state.catItems.filter(m=>m.poster_path).forEach(it=>{
+        const tmp=document.createElement('div');
+        tmp.innerHTML=cardHTML(it);
+        const card=tmp.firstElementChild;
+        bindCard(card,it);
+        grid.appendChild(card);
+      });
+    }
+    if(spin)spin.style.display='none';
+  }
+
+  // ===== PENCARIAN =====
+  async function doSearch(q){
+    state.tab='search'; state.query=q; setActiveNav();
+    hero.style.display='none'; rowsWrap.classList.add('pushed');
+    rowsWrap.innerHTML='<div class="spinner"></div>';
+    try{
+      const data=await fetchJSON(searchURL(q));
+      let items=(data.results||[]).filter(r=>r.media_type==='movie'||r.media_type==='tv').map(r=>normalize(r));
+      if(state.media!=='all') items=items.filter(it=>it.media===state.media);
+      items=items.filter(passFilters);
+      rowsWrap.innerHTML=`<div class="cat-head"><h2 class="cat-title">Hasil untuk: "${q}"</h2></div>`;
+      const {grid,count}=buildGridEl(items);
+      if(!count) rowsWrap.innerHTML+='<div class="message">Tidak ada hasil.</div>';
+      else rowsWrap.appendChild(grid);
+    }catch(e){
+      rowsWrap.innerHTML='<div class="message">Pencarian gagal.</div>';
+    }
+  }
+
+  // ===== DAFTAR SAYA =====
+  function showWatchlist(){
+    state.tab='watchlist'; setActiveNav();
+    hero.style.display='none'; rowsWrap.classList.add('pushed');
+    let items=getWatchlist();
+    if(state.media!=='all') items=items.filter(it=>it.media===state.media);
+    rowsWrap.innerHTML=`<div class="cat-head"><h2 class="cat-title">Daftar Saya</h2></div>`;
+    const {grid,count}=buildGridEl(items);
+    if(!count) rowsWrap.innerHTML+='<div class="message">Daftar Saya masih kosong. Tambahkan film atau series dengan tombol +.</div>';
+    else rowsWrap.appendChild(grid);
+  }
+
+  // ===== MODAL DETAIL =====
+  async function openDetail(media,id){
+    let full=null;
+    try{ full=await fetchJSON(detailURL(media,id)); }catch(e){}
+    let it = full ? normalize(full,media) : movieCache[media+'-'+id];
+    if(!it) return;
+    let overview=it.overview;
+    if(!overview){ try{ const en=await fetchJSON(detailEnURL(media,id)); overview=en.overview; }catch(e){} }
+    full = full || {};
+    const bg = it.backdrop_path ? BACKDROP+it.backdrop_path : IMG+it.poster_path;
+    const year=(it.date||'').slice(0,4);
+    const match=Math.round((it.vote_average||0)*10);
+    let extra='';
+    if(media==='movie' && full.runtime) extra=`${Math.floor(full.runtime/60)}j ${full.runtime%60}m`;
+    if(media==='tv' && full.number_of_seasons) extra=`${full.number_of_seasons} Musim`;
+    const genreNames=(full.genres||[]).map(g=>g.name).join(' • ');
+    const typeLabel = media==='tv' ? 'Series' : 'Film';
+    modalInner.innerHTML=`
       <div class="modal-hero" style="background-image:url('${bg}')">
         <div class="modal-hero-content">
           <h2>${it.title}</h2>
@@ -378,7 +560,15 @@
         </div>
         <p class="modal-overview">${overview||'Tidak ada deskripsi.'}</p>
         ${genreNames?`<p class="modal-genres">Genre: ${genreNames}</p>`:''}
-      </div>`;<br>    document.getElementById('modal-play').onclick=()=>openPlayer(media,id);<br>    modal.classList.add('open');<br>    document.body.style.overflow='hidden';<br>  }<br><br>  // ===== MODAL PLAYER =====<br>  function openPlayer(media,id){<br>    modalInner.innerHTML=`
+      </div>`;
+    document.getElementById('modal-play').onclick=()=>openPlayer(media,id);
+    modal.classList.add('open');
+    document.body.style.overflow='hidden';
+  }
+
+  // ===== MODAL PLAYER =====
+  function openPlayer(media,id){
+    modalInner.innerHTML=`
       <div class="player-wrap" id="player-wrap">
         <button class="fs-btn" id="fs-btn" title="Layar Penuh"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button>
         <iframe class="modal-player" id="player-frame" src="${playerURL(media,id)}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>
