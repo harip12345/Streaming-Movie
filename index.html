@@ -31,7 +31,8 @@
 
   /* FILTER BAR */
   .filter-bar{position:fixed;top:56px;left:0;width:100%;z-index:48;display:none;gap:26px;align-items:center;flex-wrap:wrap;padding:8px 4%;background:linear-gradient(to bottom,rgba(0,0,0,.85),rgba(0,0,0,.25))}
-  .filter-bar.open{display:flex}
+  .filter-bar.open{display:flex;max-height:calc(100vh - 70px);overflow-y:auto}
+  @media(min-width:901px){#nav-seg{display:none}}
   .filter-toggle{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:5px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
   .filter-toggle:hover{background:rgba(255,255,255,.25)}
   .filter-toggle.active{background:var(--primary);border-color:var(--primary)}
@@ -156,6 +157,8 @@
     .top-card{width:52vw}
     .top-rank{font-size:22vw}
     .filter-bar{top:54px;gap:14px}
+    .btn{font-size:.95rem;padding:9px 18px}
+    .btn svg{width:20px;height:20px}
   }
   @media(max-width:560px){
     .card{width:40vw}
@@ -166,6 +169,9 @@
     .grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
     .grid .card-info h3{font-size:.74rem}
     .cat-title{font-size:1.3rem}
+    .hero-buttons{gap:8px}
+    .btn{font-size:.8rem;padding:7px 14px;gap:6px}
+    .btn svg{width:16px;height:16px}
   }
 </style>
 </head>
@@ -186,6 +192,7 @@
 </header>
 
 <div class="filter-bar" id="filter-bar">
+  <div class="filter-group" id="nav-seg"></div>
   <div class="filter-group" id="media-seg"></div>
   <div class="filter-group" id="region-seg"></div>
 </div>
@@ -249,6 +256,7 @@
   const closeBtn = document.getElementById('close-btn');
   const logo = document.getElementById('logo');
   const mainNav = document.getElementById('main-nav');
+  const navSeg = document.getElementById('nav-seg');
   const mediaSeg = document.getElementById('media-seg');
   const regionSeg = document.getElementById('region-seg');
   const searchContainer = document.getElementById('search-container');
@@ -622,6 +630,21 @@
       };
       mainNav.appendChild(b);
     });
+    navSeg.innerHTML='<span class="seg-label">Menu:</span>';
+    const nseg=document.createElement('div'); nseg.className='seg';
+    items.forEach(it=>{
+      const b=document.createElement('button');
+      b.className='seg-btn'; b.textContent=it.label;
+      b.onclick=()=>{
+        closeSearch();
+        if(it.key==='home') loadHome();
+        else if(it.key==='watchlist') showWatchlist();
+        else openCategory({label:it.label,genre:it.genre,key:it.key});
+        window.scrollTo({top:0,behavior:'smooth'});
+      };
+      nseg.appendChild(b);
+    });
+    navSeg.appendChild(nseg);
     mediaSeg.innerHTML='<span class="seg-label">Tipe:</span>';
     const mseg=document.createElement('div'); mseg.className='seg';
     MEDIA_TYPES.forEach(mt=>{
