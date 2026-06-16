@@ -30,7 +30,11 @@
   .search-container.open #search-input{width:190px;padding-left:10px}
 
   /* FILTER BAR */
-  .filter-bar{position:fixed;top:56px;left:0;width:100%;z-index:48;display:flex;gap:26px;align-items:center;flex-wrap:wrap;padding:8px 4%;background:linear-gradient(to bottom,rgba(0,0,0,.8),rgba(0,0,0,.2))}
+  .filter-bar{position:fixed;top:56px;left:0;width:100%;z-index:48;display:none;gap:26px;align-items:center;flex-wrap:wrap;padding:8px 4%;background:linear-gradient(to bottom,rgba(0,0,0,.85),rgba(0,0,0,.25))}
+  .filter-bar.open{display:flex}
+  .filter-toggle{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:5px;width:34px;height:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
+  .filter-toggle:hover{background:rgba(255,255,255,.25)}
+  .filter-toggle.active{background:var(--primary);border-color:var(--primary)}
   .filter-group{display:flex;align-items:center;gap:8px}
   .seg-label{color:#9a9a9a;font-size:.78rem}
   .seg{display:inline-flex;background:rgba(40,40,40,.85);border-radius:6px;padding:3px;gap:2px;flex-wrap:wrap}
@@ -57,11 +61,12 @@
 
   /* ROWS */
   .rows-wrap{position:relative;z-index:3;margin-top:-90px;padding-bottom:50px}
-  .rows-wrap.pushed{margin-top:118px}
+  .rows-wrap.pushed{margin-top:78px}
+  body.filters-open .rows-wrap.pushed{margin-top:122px}
   .row{margin:0 0 1.2vw 0}
   .row-head{display:flex;align-items:baseline;justify-content:space-between;margin:0 4% .3em}
   .row-title{font-size:1.35rem;font-weight:700;color:#e5e5e5}
-  .more-btn-inline{background:none;border:none;color:#7fc4ff;cursor:pointer;font-size:.82rem;font-weight:600;opacity:0;transition:opacity .25s}
+  .more-btn-inline{background:none;border:none;color:#7fc4ff;cursor:pointer;font-size:.82rem;font-weight:600;opacity:1;transition:opacity .25s}
   .row:hover .more-btn-inline{opacity:1}
   .more-btn-inline span{font-size:1rem}
   .row-slider-wrap{position:relative}
@@ -102,7 +107,9 @@
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding:0 4% 30px}
   .grid .card{width:100%;min-width:0;max-width:none}
   .grid .card:hover{transform:scale(1.05)}
-  .cat-head{padding:6px 4% 2px}
+  .cat-head{padding:6px 4% 2px;display:flex;align-items:center;gap:14px}
+  .back-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);color:#fff;padding:7px 14px;border-radius:5px;cursor:pointer;font-size:.9rem;font-weight:600;transition:background .2s;white-space:nowrap}
+  .back-btn:hover{background:rgba(255,255,255,.25)}
   .cat-title{font-size:1.7rem;font-weight:800}
   .more-wrap{text-align:center;padding:20px 0 70px}
   .more-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.35);color:#fff;padding:12px 30px;border-radius:6px;cursor:pointer;font-size:.95rem;font-weight:600;transition:background .2s}
@@ -154,7 +161,11 @@
     .card{width:40vw}
     .hero{height:70vh}
     .modal-hero-content,.modal-body{padding-left:20px;padding-right:20px}
-    .rows-wrap.pushed{margin-top:150px}
+    .rows-wrap.pushed{margin-top:74px}
+    body.filters-open .rows-wrap.pushed{margin-top:150px}
+    .grid{grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+    .grid .card-info h3{font-size:.74rem}
+    .cat-title{font-size:1.3rem}
   }
 </style>
 </head>
@@ -166,6 +177,7 @@
     <nav class="main-nav" id="main-nav"></nav>
   </div>
   <div class="nav-right">
+    <button class="filter-toggle" id="filter-toggle" title="Filter"><svg viewBox="0 0 24 24" width="20" height="20" fill="#fff"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg></button>
     <div class="search-container" id="search-container">
       <svg class="search-icon" id="search-icon" viewBox="0 0 24 24"><path d="M21.71 20.29l-3.4-3.39A8.94 8.94 0 0020 11a9 9 0 10-9 9 8.94 8.94 0 005.9-2.69l3.39 3.4a1 1 0 001.42-1.42zM4 11a7 7 0 117 7 7 7 0 01-7-7z"/></svg>
       <input type="text" id="search-input" placeholder="Judul, orang, genre">
@@ -212,6 +224,7 @@
     id:{label:'\ud83c\uddee\ud83c\udde9 Indonesia',lang:'id'},
     ko:{label:'\ud83c\uddf0\ud83c\uddf7 Korea',lang:'ko'},
     ja:{label:'\ud83c\uddef\ud83c\uddf5 Jepang',lang:'ja'},
+    th:{label:'\ud83c\uddf9\ud83c\udded Thailand',lang:'th'},
     west:{label:'\ud83c\udf0e Barat',lang:'en'},
   };
   const MEDIA_TYPES = [
@@ -462,10 +475,11 @@
     hero.style.display='none';
     rowsWrap.classList.add('pushed');
     rowsWrap.innerHTML=`
-      <div class="cat-head"><h2 class="cat-title">${def.label}</h2></div>
+      <div class="cat-head"><button class="back-btn" id="cat-back">‹ Kembali</button><h2 class="cat-title">${def.label}</h2></div>
       <div class="grid" id="cat-grid"></div>
       <div class="spinner" id="cat-spin"></div>
       <div class="more-wrap"><button class="more-btn" id="load-more">Muat Lebih Banyak</button></div>`;
+    document.getElementById('cat-back').onclick=()=>loadHome();
     document.getElementById('load-more').onclick=()=>loadMoreCategory();
     window.scrollTo({top:0,behavior:'smooth'});
     await loadMoreCategory();
@@ -652,6 +666,9 @@
 
   // ===== EVENTS =====
   window.addEventListener('scroll',()=>header.classList.toggle('scrolled',window.scrollY>60));
+  const filterToggle=document.getElementById('filter-toggle');
+  const filterBar=document.getElementById('filter-bar');
+  filterToggle.onclick=()=>{ const open=filterBar.classList.toggle('open'); filterToggle.classList.toggle('active',open); document.body.classList.toggle('filters-open',open); };
   logo.onclick=()=>{ closeSearch(); loadHome(); window.scrollTo({top:0,behavior:'smooth'}); };
   searchIcon.onclick=()=>{ searchContainer.classList.toggle('open'); if(searchContainer.classList.contains('open')) searchInput.focus(); };
   let searchTimer;
