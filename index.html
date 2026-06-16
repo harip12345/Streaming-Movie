@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Notflix</title>
+<title>Netflix kw</title>
 <style>
   :root{--bg:#141414;--text:#fff;--text-dim:#b3b3b3;--primary:#e50914;--rating:#46d369;--card-radius:4px;--row-gap:.4vw}
   *{box-sizing:border-box;margin:0;padding:0}
@@ -181,7 +181,7 @@
 
 <header id="header">
   <div class="header-left">
-    <span class="logo" id="logo">Notflix</span>
+    <span class="logo" id="logo">Netflix kw</span>
     <nav class="main-nav" id="main-nav"></nav>
   </div>
   <div class="nav-right">
@@ -281,10 +281,10 @@
 
   // ===== SUBTITLE / PLAYER SRC =====
   const SUB_LANGS = {id:'Indonesia',en:'English',ko:'Korea',ja:'Jepang',th:'Thailand',es:'Spanyol',fr:'Prancis',ar:'Arab',off:'Mati'};
-  let subLang = localStorage.getItem('notflix_sublang') || 'id';
+  let subLang = localStorage.getItem('Netflix kw_sublang') || 'id';
   const psrc = (media,id) => {
     const type = media==='tv' ? 'tv' : 'movie';
-    let u = 'https://vidsrc.xyz/embed/'+type+'?tmdb='+id;
+    let u = 'https://vidsrc.me/embed/'+type+'?tmdb='+id;
     if(subLang && subLang!=='off') u += '&ds_lang='+subLang;
     return u;
   };
@@ -316,13 +316,13 @@
   const currentMedias = () => state.media==='all' ? ['movie','tv'] : [state.media];
 
   // ===== WATCHLIST =====
-  const getWatchlist = () => JSON.parse(localStorage.getItem('notflix_watchlist')) || [];
+  const getWatchlist = () => JSON.parse(localStorage.getItem('Netflix kw_watchlist')) || [];
   const isSaved = (id,media) => getWatchlist().some(m => m.id===id && m.media===media);
   function toggleSave(it){
     let wl = getWatchlist();
     if(isSaved(it.id,it.media)) wl = wl.filter(m => !(m.id===it.id && m.media===it.media));
     else wl.push(it);
-    localStorage.setItem('notflix_watchlist', JSON.stringify(wl));
+    localStorage.setItem('Netflix kw_watchlist', JSON.stringify(wl));
   }
 
   // ===== AMBIL ITEM UNTUK SATU BARIS =====
@@ -614,7 +614,7 @@
     const frame=document.getElementById('player-frame');
     const subSel=document.getElementById('sub-lang');
     subSel.innerHTML=Object.entries(SUB_LANGS).map(([k,v])=>`<option value="${k}"${k===subLang?' selected':''}>${v}</option>`).join('');
-    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('notflix_sublang',subLang); frame.src=psrc(media,id); };
+    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('Netflix kw_sublang',subLang); frame.src=psrc(media,id); };
     document.getElementById('fs-btn').onclick=()=>{
       const inFs=document.fullscreenElement||document.webkitFullscreenElement;
       if(!inFs){ const req=wrap.requestFullscreen||wrap.webkitRequestFullscreen||wrap.msRequestFullscreen; if(req)req.call(wrap); }
