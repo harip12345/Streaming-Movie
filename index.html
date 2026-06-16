@@ -170,6 +170,16 @@
     background:#181818;border:none;color:#fff;font-size:1.4rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
   .close-btn:hover{background:#333}
 
+  /* ===== MODE PEMUTAR LAYAR PENUH ===== */
+  .modal.player-mode{align-items:center;padding:0}
+  .modal.player-mode .modal-card{width:100%;height:100%;max-width:none;border-radius:0;background:#000;display:flex;align-items:center;justify-content:center}
+  .modal.player-mode .close-btn{top:18px;right:18px;background:rgba(0,0,0,.6)}
+  .player-wrap{position:relative;width:100%;height:100%;background:#000}
+  .player-wrap .modal-player{width:100%;height:100%;aspect-ratio:auto}
+  .fs-btn{position:absolute;bottom:18px;right:18px;z-index:12;width:46px;height:46px;border-radius:8px;background:rgba(0,0,0,.6);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .2s}
+  .fs-btn:hover{background:rgba(0,0,0,.9)}
+  .fs-btn svg{width:24px;height:24px}
+
   .message{text-align:center;font-size:1.1rem;color:#999;padding:40px;width:100%}
   .spinner{width:46px;height:46px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--primary);
     border-radius:50%;animation:spin 1s linear infinite;margin:60px auto}
@@ -238,6 +248,17 @@
   const LANG = 'id-ID';
 
   const GENRES = {28:'Action',35:'Komedi',27:'Horor',878:'Sci-Fi',10749:'Romansa',16:'Animasi',18:'Drama'};
+
+  // ===== FILTER NEGARA: sembunyikan film/series India =====
+  const BLOCKED_LANGS = ['hi','ta','te','ml','kn','bn','pa','mr','gu','or','as','ur']; // bahasa-bahasa India
+  const BLOCKED_COUNTRY = 'IN';
+  function filterMovies(list){
+    return (list||[]).filter(m => {
+      if(BLOCKED_LANGS.includes(m.original_language)) return false;
+      if(Array.isArray(m.origin_country) && m.origin_country.includes(BLOCKED_COUNTRY)) return false;
+      return true;
+    });
+  }
 
   // ===== ELEMEN =====
   const header = document.getElementById('header');
@@ -340,7 +361,7 @@
 
   // ===== BARIS BIASA =====
   function buildRow(title, movies, isTop){
-    const valid = (movies||[]).filter(m => m.poster_path);
+    const valid = filterMovies(movies).filter(m => m.poster_path);
     if(!valid.length) return null;
     const row = document.createElement('section');
     row.className = 'row';
@@ -374,7 +395,7 @@
 
   // ===== GRID SEDERHANA (search/watchlist) =====
   function buildGrid(title, movies){
-    const valid = (movies||[]).filter(m => m.poster_path);
+    const valid = filterMovies(movies).filter(m => m.poster_path);
     const sec = document.createElement('section');
     sec.className = 'row';
     if(!valid.length){
@@ -409,7 +430,8 @@
         fetchJSON(genreURL(27)),
         fetchJSON(genreURL(878)),
       ]);
-      renderHero((trending.results||[]).filter(m=>m.backdrop_path)[Math.floor(Math.random()*5)] || trending.results[0]);
+      const heroPool = filterMovies(trending.results).filter(m=>m.backdrop_path);
+      renderHero(heroPool[Math.floor(Math.random()*Math.min(5,heroPool.length||1))] || heroPool[0]);
       rowsWrap.innerHTML = '';
       const rows = [
         buildRow('Sedang Tren', trending.results),
@@ -433,7 +455,8 @@
     try{
       const [p1,p2] = await Promise.all([fetchJSON(genreURL(id,1)),fetchJSON(genreURL(id,2))]);
       const all = [...(p1.results||[]),...(p2.results||[])];
-      renderHero((p1.results||[]).filter(m=>m.backdrop_path)[0] || p1.results[0]);
+      const gHero = filterMovies(p1.results);
+      renderHero(gHero.filter(m=>m.backdrop_path)[0] || gHero[0]);
       rowsWrap.innerHTML = '';
       rowsWrap.appendChild(buildGrid('Film ' + (GENRES[id]||''), all));
     }catch(e){
@@ -497,13 +520,25 @@
 
   // ===== MODAL PLAYER =====
   function openPlayer(id){
-    modalInner.innerHTML = `<iframe class="modal-player" src="https://vidsrc.me/embed/movie?tmdb=${id}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe>`;
-    modal.classList.add('open');
+    modalInner.innerHTML = `<br>      <div class="player-wrap" id="player-wrap"><br>        <button class="fs-btn" id="fs-btn" title="Layar Penuh"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button><br>        <iframe class="modal-player" id="player-frame" src="https://vidsrc.me/embed/movie?tmdb=${id}" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe><br>      </div>`;
+    modal.classList.add('open','player-mode');
     document.body.style.overflow='hidden';
+    const wrap = document.getElementById('player-wrap');
+    document.getElementById('fs-btn').onclick = () => {
+      const inFs = document.fullscreenElement || document.webkitFullscreenElement;
+      if(!inFs){
+        const req = wrap.requestFullscreen || wrap.webkitRequestFullscreen || wrap.msRequestFullscreen;
+        if(req) req.call(wrap);
+      } else {
+        const exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if(exit) exit.call(document);
+      }
+    };
   }
 
   function closeModal(){
-    modal.classList.remove('open');
+    if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
+    modal.classList.remove('open','player-mode');
     modalInner.innerHTML='';
     document.body.style.overflow='auto';
   }
