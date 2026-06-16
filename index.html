@@ -298,9 +298,11 @@
   const topRatedURL = () => `${BASE}/movie/top_rated?api_key=${API_KEY}&language=${LANG}&page=1`;
   const searchURL = q => `${BASE}/search/movie?api_key=${API_KEY}&language=${LANG}&query=${encodeURIComponent(q)}`;
   const detailURL = id => `${BASE}/movie/${id}?api_key=${API_KEY}&language=${LANG}`;
+  const detailEnURL = id => `${BASE}/movie/${id}?api_key=${API_KEY}&language=en-US`;
+  const langURL = (lang,p) => `${BASE}/discover/movie?api_key=${API_KEY}&language=${LANG}&with_original_language=${lang}&sort_by=popularity.desc&page=${p||1}`;
 
   // ===== HERO / BILLBOARD =====
-  function renderHero(movie){
+  async function renderHero(movie){
     if(!movie){hero.style.display='none';return;}
     hero.style.display='flex';
     movieCache[movie.id] = movie;
@@ -308,6 +310,9 @@
     hero.style.backgroundImage = `url('${bg}')`;
     const year = (movie.release_date||'').slice(0,4);
     const match = Math.round((movie.vote_average||0)*10);
+    let overview = movie.overview;
+    if(!overview){ try{ const en = await fetchJSON(detailEnURL(movie.id)); overview = en.overview; movie.overview = en.overview; }catch(e){} }
+    if(!overview) overview = 'Deskripsi belum tersedia untuk judul ini.';
     hero.innerHTML = `
       <div class="hero-content">
         <h1 class="hero-title">${movie.title||''}</h1>
@@ -316,7 +321,7 @@
           ${year?`<span>${year}</span>`:''}
           <span>⭐ ${(movie.vote_average||0).toFixed(1)}</span>
         </div>
-        <p class="hero-overview">${movie.overview||'Tidak ada deskripsi tersedia.'}</p>
+        <p class="hero-overview">${overview}</p>
         <div class="hero-buttons">
           <button class="btn btn-play"><svg viewBox="0 0 24 24" fill="#000"><path d="M8 5v14l11-7z"/></svg> Putar</button>
           <button class="btn btn-info"><svg viewBox="0 0 24 24" fill="#fff"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/></svg> Info Selengkapnya</button>
@@ -421,25 +426,37 @@
   async function loadHome(){
     rowsWrap.innerHTML = '<div class="spinner"></div>';
     try{
-      const [trending, popular, topRated, action, comedy, horror, scifi] = await Promise.all([
+      const [trending, trending2, popular, popular2, topRated, action, action2, comedy, comedy2, horror, horror2, scifi, korea, korea2, indo, indo2] = await Promise.all([
         fetchJSON(trendingURL()),
-        fetchJSON(popularURL()),
+        fetchJSON(popularURL(3)),
+        fetchJSON(popularURL(1)),
+        fetchJSON(popularURL(2)),
         fetchJSON(topRatedURL()),
-        fetchJSON(genreURL(28)),
-        fetchJSON(genreURL(35)),
-        fetchJSON(genreURL(27)),
-        fetchJSON(genreURL(878)),
+        fetchJSON(genreURL(28,1)),
+        fetchJSON(genreURL(28,2)),
+        fetchJSON(genreURL(35,1)),
+        fetchJSON(genreURL(35,2)),
+        fetchJSON(genreURL(27,1)),
+        fetchJSON(genreURL(27,2)),
+        fetchJSON(genreURL(878,1)),
+        fetchJSON(langURL('ko',1)),
+        fetchJSON(langURL('ko',2)),
+        fetchJSON(langURL('id',1)),
+        fetchJSON(langURL('id',2)),
       ]);
+      const cat = (...arrs) => arrs.flatMap(a => a||[]);
       const heroPool = filterMovies(trending.results).filter(m=>m.backdrop_path);
       renderHero(heroPool[Math.floor(Math.random()*Math.min(5,heroPool.length||1))] || heroPool[0]);
       rowsWrap.innerHTML = '';
       const rows = [
-        buildRow('Sedang Tren', trending.results),
+        buildRow('Sedang Tren', cat(trending.results, trending2.results)),
         buildRow('10 Teratas Hari Ini', (topRated.results||[]).slice(0,10), true),
-        buildRow('Populer di Notflix', popular.results),
-        buildRow('Film Laga', action.results),
-        buildRow('Komedi Pilihan', comedy.results),
-        buildRow('Bikin Merinding', horror.results),
+        buildRow('Populer di Notflix', cat(popular.results, popular2.results)),
+        buildRow('🇰🇷 Film & Drama Korea', cat(korea.results, korea2.results)),
+        buildRow('🇮🇩 Film Indonesia', cat(indo.results, indo2.results)),
+        buildRow('Film Laga', cat(action.results, action2.results)),
+        buildRow('Komedi Pilihan', cat(comedy.results, comedy2.results)),
+        buildRow('Bikin Merinding', cat(horror.results, horror2.results)),
         buildRow('Fiksi Ilmiah', scifi.results),
       ];
       rows.forEach(r => r && rowsWrap.appendChild(r));
@@ -490,6 +507,7 @@
     let movie = movieCache[id];
     try{ movie = await fetchJSON(detailURL(id)); movieCache[id]=movie; }catch(e){}
     if(!movie) return;
+    if(!movie.overview){ try{ const en = await fetchJSON(detailEnURL(id)); movie.overview = en.overview; }catch(e){} }
     const bg = movie.backdrop_path ? BACKDROP+movie.backdrop_path : IMG+movie.poster_path;
     const year = (movie.release_date||'').slice(0,4);
     const match = Math.round((movie.vote_average||0)*10);
