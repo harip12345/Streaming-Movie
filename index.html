@@ -278,10 +278,12 @@
   // ===== FETCH & URL =====
   async function fetchJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
   const trendingURL = media => `${BASE}/trending/${media}/week?api_key=${API_KEY}&language=${LANG}`;
-  function discoverURL(media,{genre,lang,page=1,latest=false}={}){
-    const sort = latest ? (media==='tv' ? 'first_air_date.desc' : 'primary_release_date.desc') : 'popularity.desc';
+  function discoverURL(media,{genre,lang,page=1,latest=false,boxoffice=false}={}){
+    let sort = latest ? (media==='tv' ? 'first_air_date.desc' : 'primary_release_date.desc') : 'popularity.desc';
+    if(boxoffice) sort = 'revenue.desc';
     let u = `${BASE}/discover/${media}?api_key=${API_KEY}&language=${LANG}&sort_by=${sort}&include_adult=false&page=${page}`;
     if(latest){ const today=new Date().toISOString().slice(0,10); u += media==='tv' ? `&first_air_date.lte=${today}&vote_count.gte=10` : `&primary_release_date.lte=${today}&vote_count.gte=10`; }
+    if(boxoffice){ const today=new Date().toISOString().slice(0,10); const _s=new Date(); _s.setFullYear(_s.getFullYear()-2); const since=_s.toISOString().slice(0,10); u += `&primary_release_date.gte=${since}&primary_release_date.lte=${today}&vote_count.gte=50`; }
     if(genre) u += `&with_genres=${genre}`;
     if(lang) u += `&with_original_language=${lang}`;
     return u;
@@ -353,9 +355,9 @@
       const data = await fetchJSON(trendingURL(state.media)).catch(()=>({results:[]}));
       return dedupe((data.results||[]).map(r=>normalize(r,state.media))).filter(passFilters);
     }
-    const medias = currentMedias();
+    const medias = def.boxoffice ? ['movie'] : currentMedias();
     const datas = await Promise.all(medias.map(media =>
-      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:1,latest:def.latest})).catch(()=>({results:[]}))
+      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:1,latest:def.latest,boxoffice:def.boxoffice})).catch(()=>({results:[]}))
     ));
     let items = [];
     datas.forEach((d,i)=>{(d.results||[]).forEach(r=>items.push(normalize(r,medias[i])));});
@@ -492,6 +494,7 @@
         {label:'🏆 Top 10 Hari Ini',trending:true,top10:true},
         {label:'⭐ Populer Saat Ini'},
         {label:'🆕 Rilis Terbaru',latest:true},
+        {label:'💰 Box Office',boxoffice:true},
         ...GENRES.map(g=>({label:g.label,genre:g})),
       ];
       const lists=await Promise.all(defs.map(d=>fetchRowItems(d)));
@@ -525,9 +528,9 @@
   async function loadMoreCategory(){
     const def=state.catDef; const region=REGIONS[state.region];
     const spin=document.getElementById('cat-spin'); if(spin)spin.style.display='block';
-    const medias=currentMedias();
+    const medias=def.boxoffice ? ['movie'] : currentMedias();
     const datas=await Promise.all(medias.map(media=>
-      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage,latest:def.latest})).catch(()=>({results:[]}))
+      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage,latest:def.latest,boxoffice:def.boxoffice})).catch(()=>({results:[]}))
     ));
     datas.forEach((d,i)=>{(d.results||[]).forEach(r=>state.catItems.push(normalize(r,medias[i])));});
     state.catPage++;
