@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Netfliix</title>
+<title>Notflix</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='4'%20fill='%23000'/%3E%3Cpolygon%20points='6,3%209,3%2018,21%2015,21'%20fill='%23e50914'/%3E%3Crect%20x='6'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3Crect%20x='15'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -191,7 +191,7 @@
 
 <header id="header">
   <div class="header-left">
-    <span class="logo" id="logo">Netfliix</span>
+    <span class="logo" id="logo">Notflix</span>
     <nav class="main-nav" id="main-nav"></nav>
   </div>
   <div class="nav-right">
@@ -295,13 +295,13 @@
 
   // ===== SUBTITLE / PLAYER SRC =====
   const SUB_LANGS = {id:'Indonesia',en:'English',ko:'Korea',ja:'Jepang',th:'Thailand',es:'Spanyol',fr:'Prancis',ar:'Arab',off:'Mati'};
-  let subLang = localStorage.getItem('Netfliix_sublang') || 'id';
+  let subLang = localStorage.getItem('notflix_sublang') || 'id';
   const SOURCES = {
     vidsrc:{ label:'VidSrc', movie:function(id){ return 'https://vidsrc.me/embed/movie?tmdb='+id+'&ds_lang=id'; }, tv:function(id,s,e){ return 'https://vidsrc.me/embed/tv?tmdb='+id+'&season='+s+'&episode='+e+'&ds_lang=id'; } },
     vidlink:{ label:'VidLink', movie:function(id){ return 'https://vidlink.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidlink.pro/tv/'+id+'/'+s+'/'+e; } },
     vidfast:{ label:'VidFast', movie:function(id){ return 'https://vidfast.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidfast.pro/tv/'+id+'/'+s+'/'+e; } },
   };
-  let source = localStorage.getItem('Netfliix_source') || 'vidsrc';
+  let source = localStorage.getItem('notflix_source') || 'vidsrc';
   const psrc = (media,id,season,episode) => {
     const src = SOURCES[source] || SOURCES.vidsrc;
     if(media==='tv') return src.tv(id, season||1, episode||1);
@@ -335,13 +335,13 @@
   const currentMedias = () => state.media==='all' ? ['movie','tv'] : [state.media];
 
   // ===== WATCHLIST =====
-  const getWatchlist = () => JSON.parse(localStorage.getItem('Netfliix_watchlist')) || [];
+  const getWatchlist = () => JSON.parse(localStorage.getItem('notflix_watchlist')) || [];
   const isSaved = (id,media) => getWatchlist().some(m => m.id===id && m.media===media);
   function toggleSave(it){
     let wl = getWatchlist();
     if(isSaved(it.id,it.media)) wl = wl.filter(m => !(m.id===it.id && m.media===it.media));
     else wl.push(it);
-    localStorage.setItem('Netfliix_watchlist', JSON.stringify(wl));
+    localStorage.setItem('notflix_watchlist', JSON.stringify(wl));
   }
 
   // ===== AMBIL ITEM UNTUK SATU BARIS =====
@@ -361,7 +361,9 @@
     ));
     let items = [];
     datas.forEach((d,i)=>{(d.results||[]).forEach(r=>items.push(normalize(r,medias[i])));});
-    return dedupe(items.filter(passFilters));
+    let out = dedupe(items.filter(passFilters));
+    if(def.latest || def.boxoffice) out = out.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    return out;
   }
 
   // ===== KARTU =====
@@ -535,6 +537,7 @@
     datas.forEach((d,i)=>{(d.results||[]).forEach(r=>state.catItems.push(normalize(r,medias[i])));});
     state.catPage++;
     state.catItems=dedupe(state.catItems).filter(passFilters);
+    if(def.latest || def.boxoffice) state.catItems=state.catItems.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const grid=document.getElementById('cat-grid');
     if(grid){
       grid.innerHTML='';
@@ -646,7 +649,7 @@
     let curSeason=1, curEpisode=1;
     const reloadFrame=()=>{ frame.src = psrc(media,id,curSeason,curEpisode); };
     srcSel.innerHTML=Object.entries(SOURCES).map(([k,v])=>`<option value="${k}"${k===source?' selected':''}>${v.label}</option>`).join('');
-    srcSel.onchange=e=>{ source=e.target.value; localStorage.setItem('Netfliix_source',source); reloadFrame(); };
+    srcSel.onchange=e=>{ source=e.target.value; localStorage.setItem('notflix_source',source); reloadFrame(); };
     if(media==='tv'){
       epCtrl.style.display='flex';
       fetchJSON(detailURL('tv',id)).then(d=>{
@@ -668,7 +671,7 @@
     showUI();
     const pc=document.getElementById('player-close'); if(pc) pc.onclick=closeModal;
     subSel.innerHTML=Object.entries(SUB_LANGS).map(([k,v])=>`<option value="${k}"${k===subLang?' selected':''}>${v}</option>`).join('');
-    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('Netfliix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
+    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('notflix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
     document.getElementById('fs-btn').onclick=()=>{
       const inFs=document.fullscreenElement||document.webkitFullscreenElement;
       if(!inFs){ const req=wrap.requestFullscreen||wrap.webkitRequestFullscreen||wrap.msRequestFullscreen; if(req)req.call(wrap); }
