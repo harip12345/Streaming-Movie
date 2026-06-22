@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Netlfiix</title>
+<title>Notflix</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2024%2024'%3E%3Crect%20width='24'%20height='24'%20rx='4'%20fill='%23000'/%3E%3Cpolygon%20points='6,3%209,3%2018,21%2015,21'%20fill='%23e50914'/%3E%3Crect%20x='6'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3Crect%20x='15'%20y='3'%20width='3'%20height='18'%20fill='%23e50914'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -156,6 +156,24 @@
   .modal.player-mode.ui-idle .close-btn{opacity:0;pointer-events:none}
   .modal.player-mode.ui-idle .player-wrap{cursor:none}
   .sub-hint{font-size:.72rem;color:#46d369;white-space:nowrap}
+  /* DETAIL TAMBAHAN */
+  .modal-sec-title{font-size:1.15rem;font-weight:700;margin:22px 0 12px}
+  .cast-row{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px}
+  .cast-item{flex:0 0 auto;width:92px;text-align:center}
+  .cast-item img{width:92px;height:92px;border-radius:50%;object-fit:cover;background:#333;margin:0 auto 6px}
+  .cast-item .nm{font-size:.78rem;font-weight:600;line-height:1.2}
+  .cast-item .ch{font-size:.72rem;color:#888;line-height:1.2}
+  .ep-list{display:flex;flex-direction:column;gap:10px}
+  .ep-item{display:flex;gap:14px;background:#222;border-radius:6px;padding:10px;cursor:pointer;transition:background .2s}
+  .ep-item:hover{background:#2e2e2e}
+  .ep-still{flex:0 0 auto;width:140px;aspect-ratio:16/9;border-radius:4px;object-fit:cover;background:#333}
+  .ep-num{font-weight:700;color:#888;margin-right:6px}
+  .ep-info h4{font-size:.92rem;margin-bottom:4px}
+  .ep-info p{font-size:.8rem;color:#aaa;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .ep-season-sel{background:#222;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:6px 10px;font-size:.9rem;margin-bottom:10px;cursor:pointer}
+  .rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:12px}
+  .card-overview{font-size:.74rem;color:#bbb;margin-top:6px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .sort-sel{margin-left:auto;background:#222;color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:5px;padding:7px 12px;font-size:.88rem;cursor:pointer}
 
   .message{text-align:center;font-size:1.1rem;color:#999;padding:40px;width:100%}
   .spinner{width:46px;height:46px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto}
@@ -191,7 +209,7 @@
 
 <header id="header">
   <div class="header-left">
-    <span class="logo" id="logo">Netlfiix</span>
+    <span class="logo" id="logo">Notflix</span>
     <nav class="main-nav" id="main-nav"></nav>
   </div>
   <div class="nav-right">
@@ -232,12 +250,18 @@
   // Genre dengan ID berbeda untuk Film (movie) vs Series (tv)
   const GENRES = [
     {key:'action',label:'Aksi',movie:28,tv:10759},
+    {key:'adventure',label:'Petualangan',movie:12,tv:10759},
     {key:'comedy',label:'Komedi',movie:35,tv:35},
+    {key:'crime',label:'Kriminal',movie:80,tv:80},
     {key:'horror',label:'Horor',movie:27,tv:9648},
-    {key:'scifi',label:'Sci-Fi & Fantasi',movie:878,tv:10765},
+    {key:'thriller',label:'Thriller',movie:53,tv:9648},
+    {key:'mystery',label:'Misteri',movie:9648,tv:9648},
+    {key:'scifi',label:'Fiksi Ilmiah',movie:878,tv:10765},
+    {key:'fantasy',label:'Fantasi',movie:14,tv:10765},
     {key:'romance',label:'Romansa',movie:10749,tv:10766},
     {key:'animation',label:'Animasi',movie:16,tv:16},
     {key:'drama',label:'Drama',movie:18,tv:18},
+    {key:'documentary',label:'Dokumenter',movie:99,tv:99},
   ];
   const REGIONS = {
     all:{label:'Semua',lang:null},
@@ -267,7 +291,8 @@
   const BLOCKED_LANGS = ['hi','ta','te','ml','kn','bn','pa','mr','gu','or','as','ur'];
   const BLOCKED_COUNTRY = 'IN';
 
-  const state = {tab:'home',media:'all',region:'all',provider:'all',query:'',catDef:null,catPage:1,catItems:[]};
+  const state = {tab:'home',media:'all',region:'all',provider:'all',query:'',catDef:null,catPage:1,catItems:[],sort:'default'};
+  let suppressRoute=false;
   let movieCache = {};
 
   // ===== ELEMEN =====
@@ -290,13 +315,18 @@
   // ===== FETCH & URL =====
   async function fetchJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
   const trendingURL = media => `${BASE}/trending/${media}/week?api_key=${API_KEY}&language=${LANG}`;
-  function discoverURL(media,{genre,lang,page=1,latest=false,boxoffice=false,provider=null}={}){
+  function discoverURL(media,{genre,lang,page=1,latest=false,boxoffice=false,provider=null,sortKey=null}={}){
     let sort = latest ? (media==='tv' ? 'first_air_date.desc' : 'primary_release_date.desc') : 'popularity.desc';
     if(boxoffice) sort = 'revenue.desc';
+    if(sortKey==='popular') sort='popularity.desc';
+    else if(sortKey==='rating') sort='vote_average.desc';
+    else if(sortKey==='newest') sort = media==='tv' ? 'first_air_date.desc' : 'primary_release_date.desc';
+    else if(sortKey==='oldest') sort = media==='tv' ? 'first_air_date.asc' : 'primary_release_date.asc';
     let u = `${BASE}/discover/${media}?api_key=${API_KEY}&language=${LANG}&sort_by=${sort}&include_adult=false&page=${page}`;
     if(latest){ const today=new Date().toISOString().slice(0,10); u += media==='tv' ? `&first_air_date.lte=${today}&vote_count.gte=10` : `&primary_release_date.lte=${today}&vote_count.gte=10`; }
     if(boxoffice){ const today=new Date().toISOString().slice(0,10); const _s=new Date(); _s.setFullYear(_s.getFullYear()-2); const since=_s.toISOString().slice(0,10); u += `&primary_release_date.gte=${since}&primary_release_date.lte=${today}&vote_count.gte=50`; }
     if(provider){ u += `&with_watch_providers=${provider}&watch_region=${WATCH_REGION}`; }
+    if(sortKey==='rating') u += `&vote_count.gte=200`;
     if(genre) u += `&with_genres=${genre}`;
     if(lang) u += `&with_original_language=${lang}`;
     return u;
@@ -304,17 +334,22 @@
   const detailURL = (media,id) => `${BASE}/${media}/${id}?api_key=${API_KEY}&language=${LANG}`;
   const detailEnURL = (media,id) => `${BASE}/${media}/${id}?api_key=${API_KEY}&language=en-US`;
   const searchURL = q => `${BASE}/search/multi?api_key=${API_KEY}&language=${LANG}&query=${encodeURIComponent(q)}`;
+  const detailFullURL = (media,id) => `${BASE}/${media}/${id}?api_key=${API_KEY}&language=${LANG}&append_to_response=credits,videos,recommendations`;
+  const seasonURL = (id,sn) => `${BASE}/tv/${id}/season/${sn}?api_key=${API_KEY}&language=${LANG}`;
+  const PROFILE_IMG = 'https://image.tmdb.org/t/p/w185';
+  const STILL_IMG = 'https://image.tmdb.org/t/p/w300';
+  function pickTrailer(videos){ const arr=(videos&&videos.results)||[]; const yt=arr.filter(v=>v.site==='YouTube'); return (yt.find(v=>v.type==='Trailer')||yt.find(v=>v.type==='Teaser')||yt[0])||null; }
   const _legacyPlayerURL = (media,id) => media==='tv' ? `https://vidsrc.me/embed/tv?tmdb=${id}` : `https://vidsrc.me/embed/movie?tmdb=${id}`;
 
   // ===== SUBTITLE / PLAYER SRC =====
   const SUB_LANGS = {id:'Indonesia',en:'English',ko:'Korea',ja:'Jepang',th:'Thailand',es:'Spanyol',fr:'Prancis',ar:'Arab',off:'Mati'};
-  let subLang = localStorage.getItem('Netlfiix_sublang') || 'id';
+  let subLang = localStorage.getItem('notflix_sublang') || 'id';
   const SOURCES = {
     vidsrc:{ label:'VidSrc', movie:function(id){ return 'https://vidsrc.me/embed/movie?tmdb='+id+'&ds_lang=id'; }, tv:function(id,s,e){ return 'https://vidsrc.me/embed/tv?tmdb='+id+'&season='+s+'&episode='+e+'&ds_lang=id'; } },
     vidlink:{ label:'VidLink', movie:function(id){ return 'https://vidlink.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidlink.pro/tv/'+id+'/'+s+'/'+e; } },
     vidfast:{ label:'VidFast', movie:function(id){ return 'https://vidfast.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidfast.pro/tv/'+id+'/'+s+'/'+e; } },
   };
-  let source = localStorage.getItem('Netlfiix_source') || 'vidsrc';
+  let source = localStorage.getItem('notflix_source') || 'vidsrc';
   const psrc = (media,id,season,episode) => {
     const src = SOURCES[source] || SOURCES.vidsrc;
     if(media==='tv') return src.tv(id, season||1, episode||1);
@@ -348,14 +383,26 @@
   const currentMedias = () => state.media==='all' ? ['movie','tv'] : [state.media];
 
   // ===== WATCHLIST =====
-  const getWatchlist = () => JSON.parse(localStorage.getItem('Netlfiix_watchlist')) || [];
+  const getWatchlist = () => JSON.parse(localStorage.getItem('notflix_watchlist')) || [];
   const isSaved = (id,media) => getWatchlist().some(m => m.id===id && m.media===media);
   function toggleSave(it){
     let wl = getWatchlist();
     if(isSaved(it.id,it.media)) wl = wl.filter(m => !(m.id===it.id && m.media===it.media));
     else wl.push(it);
-    localStorage.setItem('Netlfiix_watchlist', JSON.stringify(wl));
+    localStorage.setItem('notflix_watchlist', JSON.stringify(wl));
   }
+
+  // ===== LANJUTKAN MENONTON =====
+  function getContinue(){ try{return JSON.parse(localStorage.getItem('notflix_continue'))||[];}catch(e){return [];} }
+  function recordContinue(it,season,episode){
+    if(!it||!it.id) return;
+    let list=getContinue().filter(x=>!(x.id===it.id && x.media===it.media));
+    const entry={id:it.id,media:it.media,title:it.title,poster_path:it.poster_path,backdrop_path:it.backdrop_path,vote_average:it.vote_average,date:it.date,overview:it.overview,original_language:it.original_language,origin_country:it.origin_country,ts:Date.now()};
+    if(it.media==='tv'){ entry.season=season||1; entry.episode=episode||1; }
+    list.unshift(entry);
+    localStorage.setItem('notflix_continue', JSON.stringify(list.slice(0,20)));
+  }
+  function getResume(media,id){ return getContinue().find(x=>x.id===id && x.media===media)||null; }
 
   // ===== AMBIL ITEM UNTUK SATU BARIS =====
   async function fetchRowItems(def){
@@ -399,6 +446,7 @@
             <button class="icon-btn info" title="Info" style="margin-left:auto"><svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button>
           </div>
           <div class="card-meta"><span class="match">${match}% cocok</span>${year?`<span>${year}</span>`:''}</div>
+          ${it.overview?`<p class="card-overview">${it.overview}</p>`:''}
         </div>
       </div>`;
   }
@@ -452,7 +500,7 @@
     row.innerHTML = `
       <div class="row-head">
         <h2 class="row-title">${def.label}</h2>
-        <button class="more-btn-inline">Lihat Semua <span>›</span></button>
+        ${def.continueRow?'':'<button class="more-btn-inline">Lihat Semua <span>›</span></button>'}
       </div>
       <div class="row-slider-wrap">
         <button class="slider-arrow left">‹</button>
@@ -478,7 +526,7 @@
     });
     row.querySelector('.left').onclick=()=>slider.scrollBy({left:-slider.clientWidth*0.85,behavior:'smooth'});
     row.querySelector('.right').onclick=()=>slider.scrollBy({left:slider.clientWidth*0.85,behavior:'smooth'});
-    row.querySelector('.more-btn-inline').onclick=()=>openCategory(def);
+    const moreBtn=row.querySelector('.more-btn-inline'); if(moreBtn) moreBtn.onclick=()=>openCategory(def);
     return row;
   }
 
@@ -499,7 +547,7 @@
 
   // ===== BERANDA =====
   async function loadHome(){
-    state.tab='home'; setActiveNav();
+    state.tab='home'; setActiveNav(); setHash('#home');
     hero.style.display='flex';
     rowsWrap.classList.remove('pushed');
     rowsWrap.innerHTML='<div class="spinner"></div>';
@@ -516,6 +564,8 @@
       const heroPool=(lists[0]||[]).filter(m=>m.backdrop_path);
       renderHero(heroPool[Math.floor(Math.random()*Math.min(6,heroPool.length||1))]||heroPool[0]);
       rowsWrap.innerHTML='';
+      const cont=getContinue().filter(it=> state.media==='all'||it.media===state.media).filter(m=>m.poster_path);
+      if(cont.length){ const cr=buildRow({label:'▶ Lanjutkan Menonton',continueRow:true},cont); if(cr) rowsWrap.appendChild(cr); }
       defs.forEach((d,i)=>{const r=buildRow(d,lists[i]);if(r)rowsWrap.appendChild(r);});
       if(!rowsWrap.children.length) rowsWrap.innerHTML='<div class="message">Tidak ada judul untuk filter ini. Coba ubah filter Tipe atau Wilayah.</div>';
     }catch(e){
@@ -526,8 +576,9 @@
 
   // ===== KATEGORI (Lihat Semua / klik genre) =====
   async function openCategory(def){
-    state.tab='category'; state.catDef=def; state.catPage=1; state.catItems=[];
+    state.tab='category'; state.catDef=def; state.catPage=1; state.catItems=[]; state.sort='default';
     setActiveNav();
+    if(def.key) setHash('#genre/'+def.key.replace(/^g_/,'')); else setHash('#category');
     hero.style.display='none';
     rowsWrap.classList.add('pushed');
     rowsWrap.innerHTML=`
@@ -537,6 +588,7 @@
       <div class="more-wrap"><button class="more-btn" id="load-more">Muat Lebih Banyak</button></div>`;
     document.getElementById('cat-back').onclick=()=>loadHome();
     document.getElementById('load-more').onclick=()=>loadMoreCategory();
+    const _ch=rowsWrap.querySelector('.cat-head'); if(_ch){ const ss=document.createElement('select'); ss.className='sort-sel'; ss.id='sort-sel'; ss.innerHTML='<option value="default">Urutkan: Relevan</option><option value="popular">Terpopuler</option><option value="rating">Rating Tertinggi</option><option value="newest">Terbaru</option><option value="oldest">Terlama</option>'; ss.value=state.sort; ss.onchange=()=>{ state.sort=ss.value; state.catPage=1; state.catItems=[]; loadMoreCategory(); }; _ch.appendChild(ss); }
     window.scrollTo({top:0,behavior:'smooth'});
     await loadMoreCategory();
   }
@@ -544,13 +596,14 @@
     const def=state.catDef; const region=REGIONS[state.region];
     const spin=document.getElementById('cat-spin'); if(spin)spin.style.display='block';
     const medias=def.boxoffice ? ['movie'] : currentMedias();
+    const sortKey=(state.sort && state.sort!=='default') ? state.sort : null;
     const datas=await Promise.all(medias.map(media=>
-      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage,latest:def.latest,boxoffice:def.boxoffice,provider:state.provider==='all'?null:PROVIDERS[state.provider].id})).catch(()=>({results:[]}))
+      fetchJSON(discoverURL(media,{genre:def.genre?def.genre[media]:null,lang:region.lang,page:state.catPage,latest:def.latest,boxoffice:def.boxoffice,provider:state.provider==='all'?null:PROVIDERS[state.provider].id,sortKey})).catch(()=>({results:[]}))
     ));
     datas.forEach((d,i)=>{(d.results||[]).forEach(r=>state.catItems.push(normalize(r,medias[i])));});
     state.catPage++;
     state.catItems=dedupe(state.catItems).filter(passFilters);
-    if(def.latest || def.boxoffice) state.catItems=state.catItems.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if((def.latest || def.boxoffice) && !sortKey) state.catItems=state.catItems.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
     const grid=document.getElementById('cat-grid');
     if(grid){
       grid.innerHTML='';
@@ -567,7 +620,7 @@
 
   // ===== PENCARIAN =====
   async function doSearch(q){
-    state.tab='search'; state.query=q; setActiveNav();
+    state.tab='search'; state.query=q; setActiveNav(); setHash('#search/'+encodeURIComponent(q));
     hero.style.display='none'; rowsWrap.classList.add('pushed');
     rowsWrap.innerHTML='<div class="spinner"></div>';
     try{
@@ -586,7 +639,7 @@
 
   // ===== DAFTAR SAYA =====
   function showWatchlist(){
-    state.tab='watchlist'; setActiveNav();
+    state.tab='watchlist'; setActiveNav(); setHash('#watchlist');
     hero.style.display='none'; rowsWrap.classList.add('pushed');
     let items=getWatchlist();
     if(state.media!=='all') items=items.filter(it=>it.media===state.media);
@@ -599,9 +652,11 @@
   // ===== MODAL DETAIL =====
   async function openDetail(media,id){
     let full=null;
-    try{ full=await fetchJSON(detailURL(media,id)); }catch(e){}
+    setHash('#detail/'+media+'/'+id);
+    try{ full=await fetchJSON(detailFullURL(media,id)); }catch(e){}
     let it = full ? normalize(full,media) : movieCache[media+'-'+id];
     if(!it) return;
+    movieCache[media+'-'+id]=it;
     let overview=it.overview;
     if(!overview){ try{ const en=await fetchJSON(detailEnURL(media,id)); overview=en.overview; }catch(e){} }
     full = full || {};
@@ -633,12 +688,78 @@
         ${genreNames?`<p class="modal-genres">Genre: ${genreNames}</p>`:''}
       </div>`;
     document.getElementById('modal-play').onclick=()=>openPlayer(media,id);
+    enrichDetail(media,id,full);
     modal.classList.add('open');
     document.body.style.overflow='hidden';
   }
 
+  // ===== DETAIL: PEMERAN, EPISODE, REKOMENDASI =====
+  async function enrichDetail(media,id,full){
+    if(!full) return;
+    const heroC=modalInner.querySelector('.modal-hero-content');
+    const trailer=pickTrailer(full.videos);
+    if(trailer && heroC){
+      const tb=document.createElement('button');
+      tb.className='btn btn-info'; tb.style.marginTop='10px';
+      tb.innerHTML=`<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg> Trailer`;
+      tb.onclick=()=>{ const mh=modalInner.querySelector('.modal-hero'); if(mh){ mh.innerHTML=`<iframe class="modal-player" src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`; mh.style.background='#000'; } };
+      heroC.appendChild(tb);
+    }
+    const body=modalInner.querySelector('.modal-body');
+    if(!body) return;
+    const cast=((full.credits&&full.credits.cast)||[]).slice(0,12);
+    if(cast.length){
+      const sec=document.createElement('div');
+      sec.innerHTML=`<h3 class="modal-sec-title">Pemeran</h3><div class="cast-row">${cast.map(c=>`<div class="cast-item"><img src="${c.profile_path?PROFILE_IMG+c.profile_path:''}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="nm">${c.name}</div><div class="ch">${c.character||''}</div></div>`).join('')}</div>`;
+      body.appendChild(sec);
+    }
+    if(media==='tv'){
+      const sec=document.createElement('div');
+      sec.innerHTML=`<h3 class="modal-sec-title">Episode</h3>`;
+      const area=document.createElement('div'); sec.appendChild(area);
+      body.appendChild(sec);
+      loadEpisodes(id, full, area);
+    }
+    const recs=((full.recommendations&&full.recommendations.results)||[]).map(r=>normalize(r,r.media_type||media)).filter(passFilters).filter(m=>m.poster_path).slice(0,12);
+    if(recs.length){
+      const sec=document.createElement('div');
+      sec.innerHTML=`<h3 class="modal-sec-title">Mirip Ini</h3>`;
+      const rg=document.createElement('div'); rg.className='rec-grid';
+      recs.forEach(rit=>{ const tmp=document.createElement('div'); tmp.innerHTML=cardHTML(rit); const card=tmp.firstElementChild; bindCard(card,rit); rg.appendChild(card); });
+      sec.appendChild(rg);
+      body.appendChild(sec);
+    }
+  }
+  async function loadEpisodes(id, full, area){
+    if(!area) return;
+    const seasons=((full.seasons)||[]).filter(s=>s.season_number>=1);
+    const segList=seasons.length?seasons:[{season_number:1}];
+    area.innerHTML=`<select class="ep-season-sel" id="det-season">${segList.map(s=>`<option value="${s.season_number}">Musim ${s.season_number}</option>`).join('')}</select><div class="ep-list" id="det-ep-list"><div class="spinner"></div></div>`;
+    const sel=area.querySelector('#det-season');
+    const listEl=area.querySelector('#det-ep-list');
+    const renderSeason=async(sn)=>{
+      listEl.innerHTML=`<div class="spinner"></div>`;
+      let data={};
+      try{ data=await fetchJSON(seasonURL(id,sn)); }catch(e){}
+      const eps=(data.episodes)||[];
+      if(!eps.length){ listEl.innerHTML=`<div class="message">Daftar episode tidak tersedia.</div>`; return; }
+      listEl.innerHTML='';
+      eps.forEach(ep=>{
+        const div=document.createElement('div');
+        div.className='ep-item';
+        const still=ep.still_path?STILL_IMG+ep.still_path:(full.backdrop_path?BACKDROP+full.backdrop_path:'');
+        div.innerHTML=`<img class="ep-still" src="${still}" alt="" loading="lazy" onerror="this.style.visibility='hidden'"><div class="ep-info"><h4><span class="ep-num">${ep.episode_number}</span>${ep.name||'Episode '+ep.episode_number}</h4><p>${ep.overview||''}</p></div>`;
+        div.onclick=()=>openPlayer('tv',id,sn,ep.episode_number);
+        listEl.appendChild(div);
+      });
+    };
+    sel.onchange=()=>renderSeason(sel.value);
+    renderSeason(segList[0].season_number);
+  }
+
   // ===== MODAL PLAYER =====
-  function openPlayer(media,id){
+  function openPlayer(media,id,startSeason,startEpisode){
+    setHash('#watch/'+media+'/'+id);
     modalInner.innerHTML=`
       <div class="player-wrap" id="player-wrap">
         <div class="player-bar" id="player-bar">
@@ -660,9 +781,14 @@
     const seasonSel=document.getElementById('season-sel');
     const epSel=document.getElementById('ep-sel');
     let curSeason=1, curEpisode=1;
-    const reloadFrame=()=>{ frame.src = psrc(media,id,curSeason,curEpisode); };
+    const baseItem = movieCache[media+'-'+id] || {id:Number(id),media:media};
+    const _resume=getResume(media,id);
+    if(media==='tv'){ curSeason = Number(startSeason)||(_resume&&_resume.season)||1; curEpisode = Number(startEpisode)||(_resume&&_resume.episode)||1; }
+    const reloadFrame=()=>{ frame.src = psrc(media,id,curSeason,curEpisode); recordContinue(baseItem,curSeason,curEpisode); };
+    if(media==='tv' && (curSeason!==1||curEpisode!==1)) frame.src = psrc(media,id,curSeason,curEpisode);
+    recordContinue(baseItem,curSeason,curEpisode);
     srcSel.innerHTML=Object.entries(SOURCES).map(([k,v])=>`<option value="${k}"${k===source?' selected':''}>${v.label}</option>`).join('');
-    srcSel.onchange=e=>{ source=e.target.value; localStorage.setItem('Netlfiix_source',source); reloadFrame(); };
+    srcSel.onchange=e=>{ source=e.target.value; localStorage.setItem('notflix_source',source); reloadFrame(); };
     if(media==='tv'){
       epCtrl.style.display='flex';
       fetchJSON(detailURL('tv',id)).then(d=>{
@@ -670,8 +796,9 @@
         const segList=seasons.length?seasons:[{season_number:1,episode_count:30}];
         seasonSel.innerHTML=segList.map(s=>`<option value="${s.season_number}">Musim ${s.season_number}</option>`).join('');
         const fillEps=(sn)=>{ const so=segList.find(x=>String(x.season_number)===String(sn)); const cnt=(so&&so.episode_count)?so.episode_count:30; let o=''; for(let i=1;i<=cnt;i++) o+=`<option value="${i}">Eps ${i}</option>`; epSel.innerHTML=o; };
-        curSeason=segList[0].season_number; curEpisode=1;
+        if(!segList.find(x=>String(x.season_number)===String(curSeason))){ curSeason=segList[0].season_number; curEpisode=1; }
         fillEps(curSeason);
+        seasonSel.value=String(curSeason); epSel.value=String(curEpisode);
         seasonSel.onchange=()=>{ curSeason=seasonSel.value; curEpisode=1; fillEps(curSeason); epSel.value='1'; reloadFrame(); };
         epSel.onchange=()=>{ curEpisode=epSel.value; reloadFrame(); };
       }).catch(()=>{});
@@ -682,9 +809,9 @@
     wrap.addEventListener('mousemove',showUI);
     if(bar){ bar.addEventListener('mouseenter',showUI); bar.addEventListener('mousemove',showUI); }
     showUI();
-    const pc=document.getElementById('player-close'); if(pc) pc.onclick=closeModal;
+    const pc=document.getElementById('player-close'); if(pc) pc.onclick=()=>closeModal();
     subSel.innerHTML=Object.entries(SUB_LANGS).map(([k,v])=>`<option value="${k}"${k===subLang?' selected':''}>${v}</option>`).join('');
-    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('Netlfiix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
+    subSel.onchange=e=>{ subLang=e.target.value; localStorage.setItem('notflix_sublang',subLang); const h=document.getElementById('sub-hint'); if(h){ h.textContent='✓ berlaku saat buka video / pakai CC'; clearTimeout(window._subHintT); window._subHintT=setTimeout(()=>{h.textContent='';},3500); } };
     document.getElementById('fs-btn').onclick=()=>{
       const inFs=document.fullscreenElement||document.webkitFullscreenElement;
       if(!inFs){ const req=wrap.requestFullscreen||wrap.webkitRequestFullscreen||wrap.msRequestFullscreen; if(req)req.call(wrap); }
@@ -692,11 +819,12 @@
     };
   }
 
-  function closeModal(){
+  function closeModal(fromRouter){
     if(document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     modal.classList.remove('open','player-mode','ui-idle');
     modalInner.innerHTML='';
     document.body.style.overflow='auto';
+    if(fromRouter!==true){ const h=location.hash; if(h.indexOf('#detail/')===0||h.indexOf('#watch/')===0) history.back(); }
   }
 
   // ===== KONTROL: NAV + FILTER =====
@@ -799,14 +927,31 @@
     if(!q){ loadHome(); return; }
     searchTimer=setTimeout(()=>doSearch(q),400);
   });
-  closeBtn.onclick=closeModal;
+  closeBtn.onclick=()=>closeModal();
   modal.addEventListener('click',e=>{ if(e.target===modal) closeModal(); });
   window.addEventListener('keydown',e=>{ if(e.key==='Escape' && modal.classList.contains('open')) closeModal(); });
   window.addEventListener('blur',()=>{ if(modal.classList.contains('player-mode')) modal.classList.add('ui-idle'); });
 
+  // ===== ROUTING (hash) =====
+  function setHash(h){ if(location.hash===h) return; suppressRoute=true; location.hash=h; }
+  function router(){
+    const h=location.hash.replace(/^#/,'');
+    const parts=h.split('/').map(s=>{try{return decodeURIComponent(s);}catch(e){return s;}});
+    if(parts[0]==='detail' && parts[1] && parts[2]){ openDetail(parts[1],parts[2]); return; }
+    if(parts[0]==='watch' && parts[1] && parts[2]){ openPlayer(parts[1],parts[2]); return; }
+    if(modal.classList.contains('open')) closeModal(true);
+    if(parts[0]==='search' && parts[1]){ searchContainer.classList.add('open'); searchInput.value=parts[1]; doSearch(parts[1]); return; }
+    if(parts[0]==='watchlist'){ showWatchlist(); return; }
+    if(parts[0]==='genre' && parts[1]){ const g=GENRES.find(x=>x.key===parts[1]); if(g){ openCategory({label:g.label,genre:g,key:'g_'+g.key}); return; } }
+    loadHome();
+  }
+  window.addEventListener('hashchange',()=>{ if(suppressRoute){ suppressRoute=false; return; } router(); });
+
   // ===== MULAI =====
   buildControls();
+  const _initHash=location.hash;
   loadHome();
+  if(_initHash && _initHash!=='#home' && _initHash!=='#' && _initHash!==''){ suppressRoute=true; location.hash=_initHash; router(); }
 </script>
 </body>
 </html>
