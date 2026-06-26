@@ -191,6 +191,11 @@
   .sportseg .seg-btn.live{display:inline-flex;align-items:center;gap:6px}
   .sportseg .seg-btn.live::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--primary);box-shadow:0 0 7px var(--primary);animation:livePulse 1.6s infinite}
   .sportseg .seg-btn.live.active::before{background:#fff;box-shadow:0 0 7px #fff}
+  .fin-badge{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.82);color:#bbb;font-size:.62rem;font-weight:800;letter-spacing:.5px;padding:3px 7px;border-radius:3px;border:1px solid rgba(255,255,255,.18)}
+  .up-badge{position:absolute;top:8px;left:8px;background:rgba(20,20,20,.82);color:#9fd0ff;font-size:.62rem;font-weight:800;letter-spacing:.5px;padding:3px 7px;border-radius:3px}
+  .prio-badge{position:absolute;top:8px;right:8px;background:linear-gradient(90deg,#f6c044,#e8a000);color:#1a1200;font-size:.6rem;font-weight:800;letter-spacing:.3px;padding:3px 7px;border-radius:3px}
+  .sport-card.prio{border-color:rgba(246,192,68,.55);box-shadow:0 0 0 1px rgba(246,192,68,.25)}
+  .sport-filterbar{margin-left:auto}
 
   .message{text-align:center;font-size:1.1rem;color:#999;padding:40px;width:100%}
   .spinner{width:46px;height:46px;border:4px solid rgba(255,255,255,.2);border-top-color:var(--primary);border-radius:50%;animation:spin 1s linear infinite;margin:60px auto}
@@ -313,8 +318,20 @@
   // Sumber data & embed pihak ketiga. Bila endpoint berubah/diblokir, cukup perbarui dua konstanta ini.
   const SPORT_API = 'https://streamed.pk';   // jadwal & gambar (alternatif: streamed.su / streamed.st)
   const SPORT_EMBED = 'https://embedme.top'; // basis embed cadangan bila API tidak mengembalikan embedUrl
+  // Liga yang diprioritaskan tampil paling atas: Liga Inggris (Premier League) & Liga Champions (UCL)
+  const PRIORITY_KEYWORDS = ['premier league','english premier','liga inggris','epl','champions league','uefa champions','liga champions','ucl'];
+  const EPL_CLUBS = ['arsenal','aston villa','bournemouth','brentford','brighton','burnley','chelsea','crystal palace','everton','fulham','ipswich','leeds','leicester','liverpool','manchester united','manchester city','man utd','man city','newcastle','nottingham forest','sheffield','sunderland','tottenham','spurs','west ham','wolves','wolverhampton'];
+  function sportPriority(m){
+    const t=((m&&m.title)||'').toLowerCase();
+    const home=((m&&m.teams&&m.teams.home&&m.teams.home.name)||'').toLowerCase();
+    const away=((m&&m.teams&&m.teams.away&&m.teams.away.name)||'').toLowerCase();
+    const hay=t+' '+home+' '+away;
+    if(PRIORITY_KEYWORDS.some(k=>hay.indexOf(k)>=0)) return true;
+    return EPL_CLUBS.some(c=>home.indexOf(c)>=0||away.indexOf(c)>=0||t.indexOf(c)>=0);
+  }
 
-  const state = {tab:'home',media:'all',region:'all',provider:'all',query:'',catDef:null,catPage:1,catItems:[],sort:'default'};
+  const state = {tab:'home',media:'all',region:'all',provider:'all',query:'',catDef:null,catPage:1,catItems:[],sort:'default',sportFilter:'all'};
+  let _sportMatches=[];
   let suppressRoute=false;
   let movieCache = {};
 
@@ -945,36 +962,64 @@
   function closeSearch(){ searchInput.value=''; searchContainer.classList.remove('open'); }
 
   // ===== STREAMING BOLA: DAFTAR & PEMUTAR =====
+  function sportStatus(m,now){
+    if(!m.date) return 'upcoming';
+    if(now>=m.date && now<=m.date+3*60*60*1000) return 'live';
+    if(now<m.date) return 'upcoming';
+    return 'finished';
+  }
   async function loadSports(){
     state.tab='sports'; setActiveNav(); setHash('#sports');
     hero.style.display='none'; rowsWrap.classList.add('pushed');
-    rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola — Live</h2></div><div class="spinner"></div>';
+    rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div><div class="spinner"></div>';
     try{
       let matches=[];
       try{ matches=await fetchJSON(SPORT_API+'/api/matches/football'); }
       catch(_e){ matches=await fetchJSON(SPORT_API+'/api/matches/live'); }
-      matches=(matches||[]).filter(m=>m && m.sources && m.sources.length);
-      matches.sort((a,b)=>(a.date||0)-(b.date||0));
-      rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola — Live</h2></div>';
-      if(!matches.length){ rowsWrap.innerHTML+='<div class="message">Tidak ada pertandingan yang tersedia saat ini. Coba lagi nanti.</div>'; return; }
-      const grid=document.createElement('div'); grid.className='sport-grid';
-      const now=Date.now();
-      matches.forEach(m=>{
-        const poster = m.poster ? (String(m.poster).indexOf('http')===0 ? m.poster : SPORT_API+m.poster) : '';
-        const isLive = m.date && now>=m.date && now <= m.date + 3*60*60*1000;
-        const start = m.date ? new Date(m.date) : null;
-        const time = start ? start.toLocaleString('id-ID',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
-        const home = m.teams && m.teams.home, away = m.teams && m.teams.away;
-        const title = m.title || (((home&&home.name)||'?')+' vs '+((away&&away.name)||'?'));
-        const card=document.createElement('div'); card.className='sport-card';
-        card.innerHTML=`<div class="sport-poster">${poster?`<img src="${poster}" alt="" loading="lazy" onerror="this.style.display='none'">`:'<span class="sport-noimg">⚽</span>'}${isLive?'<span class="live-badge">● LIVE</span>':''}</div><div class="sport-info"><h3>${title}</h3>${time?`<div class="sport-time">${time}</div>`:''}</div>`;
-        card.onclick=()=>openSportPlayer(m,title);
-        grid.appendChild(card);
-      });
-      rowsWrap.appendChild(grid);
+      _sportMatches=(matches||[]).filter(m=>m && m.sources && m.sources.length);
+      renderSports();
     }catch(e){
-      rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola — Live</h2></div><div class="message">Gagal memuat jadwal pertandingan. Sumber bola pihak ketiga mungkin berubah / diblokir — perbarui SPORT_API di kode (mis. streamed.su / streamed.st).</div>';
+      rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div><div class="message">Gagal memuat jadwal pertandingan. Sumber bola pihak ketiga mungkin berubah / diblokir — perbarui SPORT_API di kode (mis. streamed.su / streamed.st).</div>';
     }
+  }
+  function setSportFilter(f){ state.sportFilter=f; renderSports(); }
+  function renderSports(){
+    const now=Date.now();
+    const filters=[{key:'all',label:'Semua'},{key:'live',label:'🔴 Live'},{key:'upcoming',label:'🕒 Akan Datang'},{key:'finished',label:'✅ Sudah Lewat'}];
+    rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div>';
+    const head=rowsWrap.querySelector('.cat-head');
+    const fseg=document.createElement('div'); fseg.className='seg sport-filterbar';
+    filters.forEach(f=>{ const b=document.createElement('button'); b.className='seg-btn'+(state.sportFilter===f.key?' active':''); b.textContent=f.label; b.onclick=()=>setSportFilter(f.key); fseg.appendChild(b); });
+    if(head) head.appendChild(fseg);
+    let list=_sportMatches.slice();
+    if(state.sportFilter!=='all') list=list.filter(m=>sportStatus(m,now)===state.sportFilter);
+    const rank=st=>st==='live'?0:(st==='upcoming'?1:2);
+    list.sort((a,b)=>{
+      const pa=sportPriority(a)?0:1, pb=sportPriority(b)?0:1;
+      if(pa!==pb) return pa-pb;
+      const ra=rank(sportStatus(a,now)), rb=rank(sportStatus(b,now));
+      if(ra!==rb) return ra-rb;
+      const da=a.date||0, db=b.date||0;
+      return (state.sportFilter==='finished') ? (db-da) : (da-db);
+    });
+    if(!list.length){ rowsWrap.innerHTML+='<div class="message">Tidak ada pertandingan pada kategori ini. Coba pilih "Semua" atau kembali lagi nanti.</div>'; return; }
+    const grid=document.createElement('div'); grid.className='sport-grid';
+    list.forEach(m=>{
+      const poster = m.poster ? (String(m.poster).indexOf('http')===0 ? m.poster : SPORT_API+m.poster) : '';
+      const st=sportStatus(m,now);
+      const start = m.date ? new Date(m.date) : null;
+      const time = start ? start.toLocaleString('id-ID',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+      const home = m.teams && m.teams.home, away = m.teams && m.teams.away;
+      const title = m.title || (((home&&home.name)||'?')+' vs '+((away&&away.name)||'?'));
+      const prio = sportPriority(m);
+      const badge = st==='live' ? '<span class="live-badge">● LIVE</span>' : (st==='finished' ? '<span class="fin-badge">SELESAI</span>' : '<span class="up-badge">AKAN DATANG</span>');
+      const star = prio ? '<span class="prio-badge">⭐ Big Match</span>' : '';
+      const card=document.createElement('div'); card.className='sport-card'+(prio?' prio':'');
+      card.innerHTML=`<div class="sport-poster">${poster?`<img src="${poster}" alt="" loading="lazy" onerror="this.style.display='none'">`:'<span class="sport-noimg">⚽</span>'}${badge}${star}</div><div class="sport-info"><h3>${title}</h3>${time?`<div class="sport-time">${time}</div>`:''}</div>`;
+      card.onclick=()=>openSportPlayer(m,title);
+      grid.appendChild(card);
+    });
+    rowsWrap.appendChild(grid);
   }
   async function openSportPlayer(m,title){
     modalInner.innerHTML='<div class="player-wrap" id="player-wrap"><div class="player-bar" id="player-bar"><div class="player-ctrl"><span>Sumber</span><select id="sp-src"></select></div><div class="player-ctrl"><span>Server</span><select id="sp-stream"></select></div><button class="fs-btn" id="fs-btn" title="Layar Penuh"><svg viewBox="0 0 24 24" fill="#fff"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg></button><button class="fs-btn" id="player-close" title="Tutup"><svg viewBox="0 0 24 24" fill="#fff"><path d="M18.3 5.71L12 12.01l-6.3-6.3-1.42 1.42 6.3 6.3-6.3 6.3 1.42 1.42 6.3-6.3 6.3 6.3 1.42-1.42-6.3-6.3 6.3-6.3z"/></svg></button></div><iframe class="modal-player" id="player-frame" src="about:blank" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen webkitallowfullscreen mozallowfullscreen></iframe></div>';
