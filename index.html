@@ -250,7 +250,6 @@
 
 <div class="filter-bar" id="filter-bar">
   <div class="filter-group" id="nav-seg"></div>
-  <div class="filter-group" id="genre-seg"></div>
   <div class="filter-group" id="region-seg"></div>
   <div class="filter-group" id="provider-seg"></div>
   <div class="filter-group" id="sport-seg"></div>
@@ -350,7 +349,6 @@
   const logo = document.getElementById('logo');
   const mainNav = document.getElementById('main-nav');
   const navSeg = document.getElementById('nav-seg');
-  const genreSeg = document.getElementById('genre-seg');
   const regionSeg = document.getElementById('region-seg');
   const providerSeg = document.getElementById('provider-seg');
   const sportSeg = document.getElementById('sport-seg');
@@ -591,14 +589,14 @@
     return {grid,count:valid.length};
   }
 
-  // ===== TAB TIPE DI BERANDA (Semua / Film / Series) =====
+  // ===== PIL GENRE DI BERANDA =====
   function buildHomeTabs(){
     const wrap=document.createElement('div'); wrap.className='home-tabs';
-    MEDIA_TYPES.forEach(mt=>{
+    GENRES.forEach(g=>{
       const b=document.createElement('button');
-      b.className='home-tab'+(state.media===mt.key?' active':'');
-      b.textContent=mt.label;
-      b.onclick=()=>{ if(state.media===mt.key) return; state.media=mt.key; loadHome(); };
+      b.className='home-tab';
+      b.textContent=g.label;
+      b.onclick=()=>openCategory({label:g.label,genre:g,key:'g_'+g.key});
       wrap.appendChild(b);
     });
     return wrap;
@@ -888,14 +886,15 @@
 
   // ===== KONTROL: NAV + FILTER =====
   function buildControls(){
-    const items=[{key:'home',label:'Beranda'},{key:'watchlist',label:'Daftar Saya'}];
+    const items=[{key:'home',label:'Beranda'},{key:'m_movie',label:'Film',media:'movie'},{key:'m_tv',label:'Series',media:'tv'},{key:'watchlist',label:'Daftar Saya'}];
     mainNav.innerHTML='';
     items.forEach(it=>{
       const b=document.createElement('button');
       b.textContent=it.label; b.dataset.key=it.key;
       b.onclick=()=>{
         closeSearch();
-        if(it.key==='home') loadHome();
+        if(it.media){ state.media=it.media; loadHome(); }
+        else if(it.key==='home'){ state.media='all'; loadHome(); }
         else if(it.key==='watchlist') showWatchlist();
         else openCategory({label:it.label,genre:it.genre,key:it.key});
         window.scrollTo({top:0,behavior:'smooth'});
@@ -909,7 +908,8 @@
       b.className='seg-btn'; b.textContent=it.label;
       b.onclick=()=>{
         closeSearch();
-        if(it.key==='home') loadHome();
+        if(it.media){ state.media=it.media; loadHome(); }
+        else if(it.key==='home'){ state.media='all'; loadHome(); }
         else if(it.key==='watchlist') showWatchlist();
         else openCategory({label:it.label,genre:it.genre,key:it.key});
         window.scrollTo({top:0,behavior:'smooth'});
@@ -917,16 +917,6 @@
       nseg.appendChild(b);
     });
     navSeg.appendChild(nseg);
-    genreSeg.innerHTML='<span class="seg-label">Genre:</span>';
-    const gseg=document.createElement('div'); gseg.className='seg';
-    GENRES.forEach(g=>{
-      const b=document.createElement('button');
-      b.className='seg-btn';
-      b.textContent=g.label;
-      b.onclick=()=>{ closeSearch(); const fb=document.getElementById('filter-bar'); const ft=document.getElementById('filter-toggle'); if(fb) fb.classList.remove('open'); if(ft) ft.classList.remove('active'); document.body.classList.remove('filters-open'); openCategory({label:g.label,genre:g,key:'g_'+g.key}); window.scrollTo({top:0,behavior:'smooth'}); };
-      gseg.appendChild(b);
-    });
-    genreSeg.appendChild(gseg);
     regionSeg.innerHTML='<span class="seg-label">Wilayah:</span>';
     const rseg=document.createElement('div'); rseg.className='seg';
     Object.entries(REGIONS).forEach(([key,r])=>{
@@ -961,9 +951,13 @@
     document.querySelectorAll('.sportseg .seg-btn').forEach(b=>b.classList.toggle('active',state.tab==='sports'));
     mainNav.querySelectorAll('button').forEach(b=>{
       let active=false;
-      if(state.tab==='home' && b.dataset.key==='home') active=true;
-      if(state.tab==='watchlist' && b.dataset.key==='watchlist') active=true;
-      if(state.tab==='category' && state.catDef && state.catDef.key && b.dataset.key===state.catDef.key) active=true;
+      const k=b.dataset.key;
+      if(state.tab==='home'){
+        if(k==='home' && state.media==='all') active=true;
+        if(k==='m_movie' && state.media==='movie') active=true;
+        if(k==='m_tv' && state.media==='tv') active=true;
+      }
+      if(state.tab==='watchlist' && k==='watchlist') active=true;
       b.classList.toggle('active',active);
     });
   }
