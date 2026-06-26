@@ -48,8 +48,8 @@
   .seg-btn.active{background:var(--primary);color:#fff;font-weight:600}
 
   /* HERO */
-  .hero{position:relative;height:88vh;min-height:560px;width:100%;background-size:cover;background-position:center 18%;display:flex;align-items:center}
-  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(20,20,20,.96) 0%,rgba(20,20,20,.6) 28%,rgba(20,20,20,.1) 55%,transparent 78%),linear-gradient(to top,var(--bg) 0%,rgba(20,20,20,.45) 16%,transparent 42%)}
+  .hero{position:relative;height:94vh;min-height:620px;width:100%;background-size:cover;background-position:center 28%;display:flex;align-items:center}
+  .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(20,20,20,.96) 0%,rgba(20,20,20,.6) 28%,rgba(20,20,20,.1) 55%,transparent 78%),linear-gradient(to top,var(--bg) 0%,var(--bg) 7%,rgba(20,20,20,.72) 20%,rgba(20,20,20,.22) 40%,transparent 62%)}
   .hero-content{position:relative;z-index:2;padding:0 4%;max-width:640px}
   .hero-tag{display:inline-block;background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:3px;margin-bottom:14px}
   .hero-title{font-size:4rem;font-weight:900;margin-bottom:18px;line-height:1.02;letter-spacing:-1.2px;text-shadow:2px 2px 10px rgba(0,0,0,.65)}
@@ -66,9 +66,14 @@
   .btn-info:hover{background:rgba(109,109,110,.5)}
 
   /* ROWS */
-  .rows-wrap{position:relative;z-index:3;margin-top:-130px;padding-bottom:50px}
+  .rows-wrap{position:relative;z-index:3;margin-top:-150px;padding-bottom:50px}
+  .rows-wrap:not(.pushed)::before{content:'';position:absolute;left:0;right:0;top:0;height:210px;background:linear-gradient(to bottom,transparent 0%,rgba(20,20,20,.55) 55%,var(--bg) 100%);pointer-events:none;z-index:-1}
   .rows-wrap.pushed{margin-top:78px}
   body.filters-open .rows-wrap.pushed{margin-top:122px}
+  .home-tabs{position:relative;z-index:6;display:flex;gap:10px;padding:0 4%;margin:34px 0 6px;flex-wrap:wrap}
+  .home-tab{background:rgba(35,35,35,.7);border:1px solid rgba(255,255,255,.2);color:#d2d2d2;padding:7px 22px;border-radius:20px;cursor:pointer;font-size:.92rem;font-weight:600;transition:all .2s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .home-tab:hover{color:#fff;border-color:rgba(255,255,255,.55)}
+  .home-tab.active{background:#fff;color:#000;border-color:#fff}
   .row{margin:0 0 2.2vw 0}
   .row-head{display:flex;align-items:baseline;justify-content:space-between;margin:0 4% .3em}
   .row-title{font-size:1.42rem;font-weight:800;color:#e5e5e5;letter-spacing:.2px}
@@ -245,7 +250,7 @@
 
 <div class="filter-bar" id="filter-bar">
   <div class="filter-group" id="nav-seg"></div>
-  <div class="filter-group" id="media-seg"></div>
+  <div class="filter-group" id="genre-seg"></div>
   <div class="filter-group" id="region-seg"></div>
   <div class="filter-group" id="provider-seg"></div>
   <div class="filter-group" id="sport-seg"></div>
@@ -345,7 +350,7 @@
   const logo = document.getElementById('logo');
   const mainNav = document.getElementById('main-nav');
   const navSeg = document.getElementById('nav-seg');
-  const mediaSeg = document.getElementById('media-seg');
+  const genreSeg = document.getElementById('genre-seg');
   const regionSeg = document.getElementById('region-seg');
   const providerSeg = document.getElementById('provider-seg');
   const sportSeg = document.getElementById('sport-seg');
@@ -586,6 +591,19 @@
     return {grid,count:valid.length};
   }
 
+  // ===== TAB TIPE DI BERANDA (Semua / Film / Series) =====
+  function buildHomeTabs(){
+    const wrap=document.createElement('div'); wrap.className='home-tabs';
+    MEDIA_TYPES.forEach(mt=>{
+      const b=document.createElement('button');
+      b.className='home-tab'+(state.media===mt.key?' active':'');
+      b.textContent=mt.label;
+      b.onclick=()=>{ if(state.media===mt.key) return; state.media=mt.key; loadHome(); };
+      wrap.appendChild(b);
+    });
+    return wrap;
+  }
+
   // ===== BERANDA =====
   async function loadHome(){
     state.tab='home'; setActiveNav(); setHash('#home');
@@ -599,12 +617,12 @@
         {label:'⭐ Populer Saat Ini'},
         {label:'🆕 Rilis Terbaru',latest:true},
         {label:'💰 Box Office',boxoffice:true},
-        ...GENRES.map(g=>({label:g.label,genre:g})),
       ];
       const lists=await Promise.all(defs.map(d=>fetchRowItems(d)));
       const heroPool=(lists[0]||[]).filter(m=>m.backdrop_path);
       renderHero(heroPool[Math.floor(Math.random()*Math.min(6,heroPool.length||1))]||heroPool[0]);
       rowsWrap.innerHTML='';
+      rowsWrap.appendChild(buildHomeTabs());
       const cont=getContinue().filter(it=> state.media==='all'||it.media===state.media).filter(m=>m.poster_path);
       if(cont.length){ const cr=buildRow({label:'▶ Lanjutkan Menonton',continueRow:true},cont); if(cr) rowsWrap.appendChild(cr); }
       defs.forEach((d,i)=>{const r=buildRow(d,lists[i]);if(r)rowsWrap.appendChild(r);});
@@ -870,9 +888,7 @@
 
   // ===== KONTROL: NAV + FILTER =====
   function buildControls(){
-    const items=[{key:'home',label:'Beranda'}]
-      .concat(GENRES.map(g=>({key:'g_'+g.key,label:g.label,genre:g})))
-      .concat([{key:'watchlist',label:'Daftar Saya'}]);
+    const items=[{key:'home',label:'Beranda'},{key:'watchlist',label:'Daftar Saya'}];
     mainNav.innerHTML='';
     items.forEach(it=>{
       const b=document.createElement('button');
@@ -901,16 +917,16 @@
       nseg.appendChild(b);
     });
     navSeg.appendChild(nseg);
-    mediaSeg.innerHTML='<span class="seg-label">Tipe:</span>';
-    const mseg=document.createElement('div'); mseg.className='seg';
-    MEDIA_TYPES.forEach(mt=>{
+    genreSeg.innerHTML='<span class="seg-label">Genre:</span>';
+    const gseg=document.createElement('div'); gseg.className='seg';
+    GENRES.forEach(g=>{
       const b=document.createElement('button');
-      b.className='seg-btn'+(state.media===mt.key?' active':'');
-      b.textContent=mt.label; b.dataset.media=mt.key;
-      b.onclick=()=>{ state.media=mt.key; refreshSeg(); applyFilters(); };
-      mseg.appendChild(b);
+      b.className='seg-btn';
+      b.textContent=g.label;
+      b.onclick=()=>{ closeSearch(); const fb=document.getElementById('filter-bar'); const ft=document.getElementById('filter-toggle'); if(fb) fb.classList.remove('open'); if(ft) ft.classList.remove('active'); document.body.classList.remove('filters-open'); openCategory({label:g.label,genre:g,key:'g_'+g.key}); window.scrollTo({top:0,behavior:'smooth'}); };
+      gseg.appendChild(b);
     });
-    mediaSeg.appendChild(mseg);
+    genreSeg.appendChild(gseg);
     regionSeg.innerHTML='<span class="seg-label">Wilayah:</span>';
     const rseg=document.createElement('div'); rseg.className='seg';
     Object.entries(REGIONS).forEach(([key,r])=>{
@@ -938,7 +954,6 @@
     spseg.appendChild(spb); sportSeg.appendChild(spseg);
   }
   function refreshSeg(){
-    mediaSeg.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.media===state.media));
     regionSeg.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.region===state.region));
     providerSeg.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active',b.dataset.provider===state.provider));
   }
