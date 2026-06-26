@@ -70,8 +70,8 @@
   .rows-wrap:not(.pushed)::before{content:'';position:absolute;left:0;right:0;top:0;height:210px;background:linear-gradient(to bottom,transparent 0%,rgba(20,20,20,.55) 55%,var(--bg) 100%);pointer-events:none;z-index:-1}
   .rows-wrap.pushed{margin-top:78px}
   body.filters-open .rows-wrap.pushed{margin-top:122px}
-  .home-tabs{position:relative;z-index:6;display:flex;gap:10px;padding:0 4%;margin:34px 0 6px;flex-wrap:wrap}
-  .home-tab{background:rgba(35,35,35,.7);border:1px solid rgba(255,255,255,.2);color:#d2d2d2;padding:7px 22px;border-radius:20px;cursor:pointer;font-size:.92rem;font-weight:600;transition:all .2s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+  .home-tabs{position:relative;z-index:6;display:flex;gap:10px;padding:6px 4% 8px;margin:30px 0 6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  .home-tab{flex:0 0 auto;white-space:nowrap;background:rgba(35,35,35,.7);border:1px solid rgba(255,255,255,.2);color:#d2d2d2;padding:7px 22px;border-radius:20px;cursor:pointer;font-size:.92rem;font-weight:600;transition:all .2s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   .home-tab:hover{color:#fff;border-color:rgba(255,255,255,.55)}
   .home-tab.active{background:#fff;color:#000;border-color:#fff}
   .row{margin:0 0 2.2vw 0}
