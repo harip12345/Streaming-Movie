@@ -364,6 +364,7 @@
   // ===== FETCH & URL =====
   async function fetchJSON(url){const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}
   const trendingURL = media => `${BASE}/trending/${media}/week?api_key=${API_KEY}&language=${LANG}`;
+  const LIST_URL = (media,listName,page=1) => `${BASE}/${media}/${listName}?api_key=${API_KEY}&language=${LANG}&page=${page}`;
   function discoverURL(media,{genre,lang,page=1,latest=false,boxoffice=false,provider=null,sortKey=null}={}){
     let sort = latest ? (media==='tv' ? 'first_air_date.desc' : 'primary_release_date.desc') : 'popularity.desc';
     if(boxoffice) sort = 'revenue.desc';
@@ -397,6 +398,11 @@
     vidsrc:{ label:'VidSrc', movie:function(id){ return 'https://vidsrc.me/embed/movie?tmdb='+id+'&ds_lang=id'; }, tv:function(id,s,e){ return 'https://vidsrc.me/embed/tv?tmdb='+id+'&season='+s+'&episode='+e+'&ds_lang=id'; } },
     vidlink:{ label:'VidLink', movie:function(id){ return 'https://vidlink.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidlink.pro/tv/'+id+'/'+s+'/'+e; } },
     vidfast:{ label:'VidFast', movie:function(id){ return 'https://vidfast.pro/movie/'+id; }, tv:function(id,s,e){ return 'https://vidfast.pro/tv/'+id+'/'+s+'/'+e; } },
+    vidsrccc:{ label:'VidSrc.cc', movie:function(id){ return 'https://vidsrc.cc/v2/embed/movie/'+id; }, tv:function(id,s,e){ return 'https://vidsrc.cc/v2/embed/tv/'+id+'/'+s+'/'+e; } },
+    vidsrcto:{ label:'VidSrc.to', movie:function(id){ return 'https://vidsrc.to/embed/movie/'+id; }, tv:function(id,s,e){ return 'https://vidsrc.to/embed/tv/'+id+'/'+s+'/'+e; } },
+    embed2:{ label:'2Embed', movie:function(id){ return 'https://www.2embed.cc/embed/'+id; }, tv:function(id,s,e){ return 'https://www.2embed.cc/embedtv/'+id+'&s='+s+'&e='+e; } },
+    autoembed:{ label:'AutoEmbed', movie:function(id){ return 'https://player.autoembed.cc/embed/movie/'+id; }, tv:function(id,s,e){ return 'https://player.autoembed.cc/embed/tv/'+id+'/'+s+'/'+e; } },
+    multiembed:{ label:'MultiEmbed', movie:function(id){ return 'https://multiembed.mov/?video_id='+id+'&tmdb=1'; }, tv:function(id,s,e){ return 'https://multiembed.mov/?video_id='+id+'&tmdb=1&s='+s+'&e='+e; } },
   };
   let source = localStorage.getItem('notflix_source') || 'vidsrc';
   const psrc = (media,id,season,episode) => {
@@ -456,6 +462,20 @@
   // ===== AMBIL ITEM UNTUK SATU BARIS =====
   async function fetchRowItems(def){
     const region = REGIONS[state.region];
+    if(def.list){
+      const medias = currentMedias();
+      const datas = await Promise.all(medias.map(media=>{
+        const ln = def.list[media];
+        if(!ln) return Promise.resolve({results:[]});
+        return fetchJSON(LIST_URL(media,ln)).catch(()=>({results:[]}));
+      }));
+      let items=[];
+      datas.forEach((d,i)=>{(d.results||[]).forEach(r=>items.push(normalize(r,medias[i])));});
+      let out=dedupe(items.filter(passFilters));
+      if(def.sortByDate) out=out.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+      else if(def.sortByDateAsc) out=out.sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+      return out;
+    }
     if(def.trending && state.region==='all' && state.provider==='all' && !def.genre){
       if(state.media==='all'){
         const data = await fetchJSON(trendingURL('all')).catch(()=>({results:[]}));
@@ -549,7 +569,7 @@
     row.innerHTML = `
       <div class="row-head">
         <h2 class="row-title">${def.label}</h2>
-        ${def.continueRow?'':'<button class="more-btn-inline">Lihat Semua <span>›</span></button>'}
+        ${(def.continueRow||def.list)?'':'<button class="more-btn-inline">Lihat Semua <span>›</span></button>'}
       </div>
       <div class="row-slider-wrap">
         <button class="slider-arrow left">‹</button>
@@ -614,8 +634,14 @@
     rowsWrap.classList.remove('pushed');
     rowsWrap.innerHTML='<div class="spinner"></div>';
     try{
+      const fresh = (state.region==='all' && state.provider==='all');
       const defs=[
         {label:'🔥 Sedang Tren',trending:true},
+        ...(fresh?[
+          {label:'🆕 Baru Rilis & Sedang Tayang',list:{movie:'now_playing',tv:'on_the_air'},sortByDate:true},
+          {label:'📺 Series Tayang Hari Ini',list:{tv:'airing_today'},sortByDate:true},
+          {label:'⏳ Segera Hadir',list:{movie:'upcoming'},sortByDateAsc:true},
+        ]:[]),
         {label:'🏆 Top 10 Hari Ini',trending:true,top10:true},
         {label:'⭐ Populer Saat Ini'},
         {label:'🆕 Rilis Terbaru',latest:true},
