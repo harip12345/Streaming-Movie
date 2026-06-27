@@ -48,9 +48,9 @@
   .seg-btn.active{background:var(--primary);color:#fff;font-weight:600}
 
   /* HERO */
-  .hero{position:relative;height:94vh;min-height:620px;width:100%;background-size:cover;background-position:center 28%;display:flex;align-items:center}
+  .hero{position:relative;height:90vh;min-height:600px;width:100%;background-size:cover;background-position:center 24%;display:flex;align-items:flex-end}
   .hero::after{content:'';position:absolute;inset:0;background:linear-gradient(to right,rgba(20,20,20,.96) 0%,rgba(20,20,20,.6) 28%,rgba(20,20,20,.1) 55%,transparent 78%),linear-gradient(to top,var(--bg) 0%,var(--bg) 7%,rgba(20,20,20,.72) 20%,rgba(20,20,20,.22) 40%,transparent 62%)}
-  .hero-content{position:relative;z-index:2;padding:0 4%;max-width:640px}
+  .hero-content{position:relative;z-index:2;padding:0 4% 72px;max-width:640px}
   .hero-tag{display:inline-block;background:var(--primary);color:#fff;font-size:.7rem;font-weight:700;letter-spacing:1.5px;padding:3px 9px;border-radius:3px;margin-bottom:14px}
   .hero-title{font-size:4rem;font-weight:900;margin-bottom:18px;line-height:1.02;letter-spacing:-1.2px;text-shadow:2px 2px 10px rgba(0,0,0,.65)}
   .hero-meta{display:flex;align-items:center;gap:14px;margin-bottom:14px;font-size:1rem}
@@ -66,11 +66,11 @@
   .btn-info:hover{background:rgba(109,109,110,.5)}
 
   /* ROWS */
-  .rows-wrap{position:relative;z-index:3;margin-top:-150px;padding-bottom:50px}
+  .rows-wrap{position:relative;z-index:3;margin-top:-40px;padding-bottom:50px}
   .rows-wrap:not(.pushed)::before{content:'';position:absolute;left:0;right:0;top:0;height:210px;background:linear-gradient(to bottom,transparent 0%,rgba(20,20,20,.55) 55%,var(--bg) 100%);pointer-events:none;z-index:-1}
   .rows-wrap.pushed{margin-top:78px}
   body.filters-open .rows-wrap.pushed{margin-top:122px}
-  .home-tabs{position:relative;z-index:6;display:flex;gap:10px;padding:6px 4% 8px;margin:30px 0 6px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
+  .home-tabs{position:relative;z-index:6;display:flex;gap:10px;padding:6px 4% 8px;margin:14px 0 4px;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scroll-behavior:smooth;-webkit-overflow-scrolling:touch}
   .home-tab{flex:0 0 auto;white-space:nowrap;background:rgba(35,35,35,.7);border:1px solid rgba(255,255,255,.2);color:#d2d2d2;padding:7px 22px;border-radius:20px;cursor:pointer;font-size:.92rem;font-weight:600;transition:all .2s;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
   .home-tab:hover{color:#fff;border-color:rgba(255,255,255,.55)}
   .home-tab.active{background:#fff;color:#000;border-color:#fff}
@@ -213,7 +213,10 @@
     .card{width:30vw}
     .top-card{width:52vw}
     .top-rank{font-size:22vw}
-    .filter-bar{top:54px;gap:14px}
+    .filter-bar{top:54px;gap:11px;flex-direction:column;align-items:stretch;padding:12px 5% 18px}
+    .filter-group{flex-direction:column;align-items:flex-start;gap:7px;width:100%}
+    .filter-group .seg{width:100%}
+    .sport-filterbar{margin-left:0}
     .btn{font-size:.95rem;padding:9px 18px}
     .btn svg{width:20px;height:20px}
   }
@@ -321,6 +324,8 @@
   // ===== STREAMING BOLA (LIVE) =====
   // Sumber data & embed pihak ketiga. Bila endpoint berubah/diblokir, cukup perbarui dua konstanta ini.
   const SPORT_API = 'https://streamed.pk';   // jadwal & gambar (alternatif: streamed.su / streamed.st)
+  const SPORT_HOSTS = ['https://streamed.pk','https://streamed.su','https://streamed.st']; // dicoba berurutan; berguna bila satu domain diblokir operator seluler
+  let SPORT_HOST = SPORT_API; // host yang terbukti aktif, dipakai untuk poster & stream
   const SPORT_EMBED = 'https://embedme.top'; // basis embed cadangan bila API tidak mengembalikan embedUrl
   // Liga yang diprioritaskan tampil paling atas: Liga Inggris (Premier League) & Liga Champions (UCL)
   const PRIORITY_KEYWORDS = ['premier league','english premier','liga inggris','epl','champions league','uefa champions','liga champions','ucl'];
@@ -982,13 +987,20 @@
     hero.style.display='none'; rowsWrap.classList.add('pushed');
     rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div><div class="spinner"></div>';
     try{
-      let matches=[];
-      try{ matches=await fetchJSON(SPORT_API+'/api/matches/football'); }
-      catch(_e){ matches=await fetchJSON(SPORT_API+'/api/matches/live'); }
+      let matches=null;
+      for(const host of SPORT_HOSTS){
+        try{
+          let res;
+          try{ res=await fetchJSON(host+'/api/matches/football'); }
+          catch(_e){ res=await fetchJSON(host+'/api/matches/live'); }
+          if(res && res.length!==undefined){ matches=res; SPORT_HOST=host; break; }
+        }catch(_h){}
+      }
+      if(!matches) throw new Error('Semua host gagal');
       _sportMatches=(matches||[]).filter(m=>m && m.sources && m.sources.length);
       renderSports();
     }catch(e){
-      rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div><div class="message">Gagal memuat jadwal pertandingan. Sumber bola pihak ketiga mungkin berubah / diblokir — perbarui SPORT_API di kode (mis. streamed.su / streamed.st).</div>';
+      rowsWrap.innerHTML='<div class="cat-head"><h2 class="cat-title">⚽ Streaming Bola</h2></div><div class="message">Gagal memuat jadwal pertandingan.<br>Coba muat ulang, ganti jaringan (mis. dari data seluler ke Wi-Fi), atau gunakan VPN — sumber bola pihak ketiga sering diblokir oleh sebagian operator seluler. Bila tetap gagal, perbarui SPORT_HOSTS di kode (mis. streamed.su / streamed.st).</div>';
     }
   }
   function setSportFilter(f){ state.sportFilter=f; renderSports(); }
@@ -1014,7 +1026,7 @@
     if(!list.length){ rowsWrap.innerHTML+='<div class="message">Tidak ada pertandingan pada kategori ini. Coba pilih "Semua" atau kembali lagi nanti.</div>'; return; }
     const grid=document.createElement('div'); grid.className='sport-grid';
     list.forEach(m=>{
-      const poster = m.poster ? (String(m.poster).indexOf('http')===0 ? m.poster : SPORT_API+m.poster) : '';
+      const poster = m.poster ? (String(m.poster).indexOf('http')===0 ? m.poster : SPORT_HOST+m.poster) : '';
       const st=sportStatus(m,now);
       const start = m.date ? new Date(m.date) : null;
       const time = start ? start.toLocaleString('id-ID',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
@@ -1045,7 +1057,7 @@
     const setStreams=async(idx)=>{
       const s=sources[idx]; if(!s) return;
       streamSel.innerHTML='<option>Memuat…</option>'; frame.src='about:blank';
-      try{ streams=await fetchJSON(SPORT_API+'/api/stream/'+s.source+'/'+s.id); }catch(e){ streams=[]; }
+      try{ streams=await fetchJSON(SPORT_HOST+'/api/stream/'+s.source+'/'+s.id); }catch(e){ streams=[]; }
       streams=(streams||[]).filter(Boolean);
       if(!streams.length){ streamSel.innerHTML='<option value="">Tidak tersedia</option>'; return; }
       streamSel.innerHTML=streams.map((st,i)=>`<option value="${i}">${st.hd?'HD':'SD'} • ${(st.language||'?')} • #${st.streamNo||(i+1)}</option>`).join('');
@@ -1106,8 +1118,13 @@
   // ===== MULAI =====
   buildControls();
   const _initHash=location.hash;
-  loadHome();
-  if(_initHash && _initHash!=='#home' && _initHash!=='#' && _initHash!==''){ suppressRoute=true; location.hash=_initHash; router(); }
+  if(_initHash && _initHash!=='#home' && _initHash!=='#' && _initHash!==''){
+    const _routeOnly=/^#(sports|watchlist|genre|search|category)/.test(_initHash);
+    if(!_routeOnly) loadHome();
+    router();
+  } else {
+    loadHome();
+  }
 </script>
 </body>
 </html>
